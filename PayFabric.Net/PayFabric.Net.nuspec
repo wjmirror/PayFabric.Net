@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>PayFabric.Net</id>
+    <version>1.1.0.21103</version>
+    <authors>Spraying System Co.</authors>
+    <owners>Spraying System Co.</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>The PayFabric Api client</description>
+    <copyright>Spraying System Co.</copyright>
+    <repository type="Git" url="https://dev.azure.com/itssco/WebERP/_git/common-library-ssco.paymentservice" />
+	<projectUrl>https://dev.azure.com/itssco/WebERP/_git/common-library-ssco.paymentservice?path=%2FSSCo.PayFabricService</projectUrl>
+	<releaseNotes>
+		1.1.0.21092 Add wallet service.
+		1.1.0.21103 Change decimal and datetime property in ExtendedInformation.LevelTwoData as Nullable type. 
+	</releaseNotes>
+    <dependencies>
+      <group targetFramework="netstandard2.0">
+        <dependency id="Microsoft.Extensions.Logging" version="2.2.0" exclude="Build,Analyzers" />
+		<dependency id="Microsoft.Extensions.Options" version="2.2.0" exclude="Build,Analyzers" />
+		<dependency id="System.Net.Http" version="4.3.4" exclude="Build,Analyzers" />
+      </group>
+	  <group targetFramework="net45">
+		<dependency id="Serilog.Sinks.File" version="4.0.0" exclude="Build,Analyzers" />
+	  </group>
+    </dependencies>
+  </metadata>
+    <files>
+	    <file src="netstandard2.0\PayFabric.Net.dll" target="lib\netstandard2.0" />
+	    <file src="netstandard2.0\SSCo.PaymentService.dll" target="lib\netstandard2.0" />
+		<file src="net45\PayFabric.Net.dll" target="lib\net45" />
+		<file src="net45\SSCo.PaymentService.dll" target="lib\net45" />
+    </files>
+</package>
