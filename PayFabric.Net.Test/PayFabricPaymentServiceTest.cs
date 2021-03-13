@@ -3,20 +3,12 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
-using SSCo.PaymentService;
-using SSCo.PaymentService.Models;
-
-#if NETSTANDARD
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-#endif
-
-#if NET45
-using Serilog;
-using PayFabric.Net.Logging;
-#endif
+using PayFabric.Net.Models;
+using System.Threading.Tasks;
 
 namespace PayFabric.Net.Test
 {
@@ -38,14 +30,9 @@ namespace PayFabric.Net.Test
         {
             TestServices.InitializeService();
 
-#if NETSTANDARD
             var _payFabricOptions = TestServices.ServiceProvider.GetService<IOptions<PayFabricOptions>>().Value;
             _paymentService = TestServices.ServiceProvider.GetService<IPaymentService>();
-#else
 
-           var  _payFabricOptions = TestServices.GetPayFabricOptions();
-            _paymentService = new PayFabricPaymentService(_payFabricOptions, TestServices.GetLogger<PayFabricPaymentService>());
-#endif
             if (string.Compare(_payFabricOptions.SetupId, "AuthorizeNet", true) == 0)
                 isAuthorizeNet = true;
             _amount = 40.0M;
@@ -59,12 +46,15 @@ namespace PayFabric.Net.Test
 
             _badcard = new Card
             {
-                FirstName = "PantsON",
-                LastName = "Fire",
-                Number = "4583194798565295",
-                Cvv = "532",
+                CardHolder = new CardHolder
+                {
+                    FirstName = "PantsON",
+                    LastName = "Fire",
+                },
+                Account = "4583194798565295",
+                Cvc = "532",
                 ExpirationDate = "0925",
-                Address = new Address
+                Billto = new Address
                 {
                     City = "Wheton",
                     Country = "USA",
@@ -77,12 +67,16 @@ namespace PayFabric.Net.Test
 
             _goodcard = new Card
             {
-                FirstName = "PantsON",
-                LastName = "Fire",
-                Number = "4111111111111111",
-                Cvv = "532",
+                CardHolder = new CardHolder
+                {
+                    FirstName = "PantsON",
+                    LastName = "Fire",
+                },
+
+                Account = "4111111111111111",
+                Cvc = "532",
                 ExpirationDate = "0925",
-                Address = new Address
+                Billto = new Address
                 {
                     City = "wheaton",
                     Country = "USA",
@@ -95,14 +89,14 @@ namespace PayFabric.Net.Test
 
             _extendedInformation = new ExtendedInformation
             {
-                Customer = "ABC",
+                Customer = "TESTAUTO",
                 InvoiceNumber = "Inv0001",
                 LevelTwoData = new LevelTwoData
                 {
                     DutyAmount = 100M,
                     FreightAmount = 110M,
                     OrderDate = DateTime.Now,
-                    PurchaseOrder = "Po0013",
+                    PONumber= "Po0013",
                     TaxAmount = 43.98M,
                 }
             };
@@ -118,49 +112,45 @@ namespace PayFabric.Net.Test
         /// </summary>
 
         [TestMethod]
-        public void TestSuccessCreditCardTransaction_ChargeVoid_TransactionIsSuccess()
+        public async Task TestSuccessCreditCardTransaction_ChargeVoid_TransactionIsSuccess()
         {
 
             ExtendedInformation extInfo = new ExtendedInformation
             {
-                Customer="TEST_0199999",
+                Customer = "TEST_0199999",
                 InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff"),
-                LevelTwoData=new LevelTwoData
+                LevelTwoData = new LevelTwoData
                 {
-                    DiscountAmount=10M,
-                    DutyAmount=110M,
-                    TaxAmount=10M,
-                    FreightAmount=5M,
-                    ShipFromZip="60139",
-                    ShipToZip="60189",
-                    PurchaseOrder="PO_1235",
-                    OrderDate=DateTime.Now
+                    DiscountAmount = 10M,
+                    DutyAmount = 110M,
+                    TaxAmount = 10M,
+                    FreightAmount = 5M,
+                    ShipFromZip = "60139",
+                    ShipToZip = "60189",
+                    PONumber = "PO_1235",
+                    OrderDate = DateTime.Now
                 }
             };
             //Test PreAuthorize method.
-            ServiceNetResponse result = _paymentService.Charge(115M, _currency, _goodcard, extInfo).Result;
+            ServiceNetResponse result = await _paymentService.Charge(115M, _currency, _goodcard, extInfo);
 
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            var tranResult = result.Transaction;
-
-            //Assert.AreEqual(tranResult.ResultCode, "0");
-            //Assert.AreEqual(tranResult.ResultMessage, TransactionStatus.Approved.ToString("g"), true);
-            Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
+            var tranResult = result.TransactionResponse;
             Assert.IsNotNull(tranResult.TransactionKey);
 
             string transactionKey = tranResult.TransactionKey;
 
+            if (isAuthorizeNet) // skip void when gateway is Authorize.Net
+                return;
 
             //Test Void method.
-            //result = _paymentService.Void(transactionKey, _extendedInformation).Result;
-            //Assert.AreEqual(result.Success, true);
-            //Assert.IsNotNull(result.Transaction);
-
-            //tranResult = result.Transaction;
-            //Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
-
+            result = _paymentService.Void(transactionKey, _extendedInformation).Result;
+            Assert.AreEqual(true, result.Success);
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
+            Assert.IsNotNull(result.TransactionResponse);
 
         }
 
@@ -180,13 +170,11 @@ namespace PayFabric.Net.Test
             ServiceNetResponse result =  _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
             
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
 
-            //Assert.AreEqual(tranResult.ResultCode, "0");
-            //Assert.AreEqual(tranResult.ResultMessage, TransactionStatus.Approved.ToString("g"), true);
-            Assert.AreEqual(TransactionStatus.Approved,tranResult.Status);
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
             Assert.IsNotNull(tranResult.TransactionKey);
 
             string transactionKey = tranResult.TransactionKey;
@@ -194,11 +182,11 @@ namespace PayFabric.Net.Test
             //Test Capture method.
             result = _paymentService.Capture(transactionKey,_amount, _extendedInformation).Result;
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            tranResult = result.Transaction;
+            tranResult = result.TransactionResponse;
 
-            Assert.AreEqual(TransactionStatus.Approved,tranResult.Status);
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
 
             //Re-assigning latest transaction key for next Void method to pass.
             transactionKey = tranResult.TransactionKey;
@@ -206,10 +194,10 @@ namespace PayFabric.Net.Test
             //Test Void method.
             result = _paymentService.Void(transactionKey, _extendedInformation).Result;
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            tranResult = result.Transaction;
-            Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
+            tranResult = result.TransactionResponse;
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
 
 
         }
@@ -229,13 +217,13 @@ namespace PayFabric.Net.Test
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
 
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
 
             //Assert.AreEqual(tranResult.ResultCode, "0");
             //Assert.AreEqual(tranResult.ResultMessage, TransactionStatus.Approved.ToString("g"), true);
-            Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
             Assert.IsNotNull(tranResult.TransactionKey);
 
             string transactionKey = tranResult.TransactionKey;
@@ -243,10 +231,10 @@ namespace PayFabric.Net.Test
             //Test Void method.
             result = _paymentService.Void(transactionKey, _extendedInformation).Result;
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            tranResult = result.Transaction;
-            Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
+            tranResult = result.TransactionResponse;
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
 
         }
 
@@ -267,14 +255,14 @@ namespace PayFabric.Net.Test
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
 
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
 
             //Assert.AreEqual(tranResult.ResultCode, "0");
             //Authorize.Net ResultCode 1
-            Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
-            //Assert.AreEqual(tranResult.StatusCode, TransactionStatus.Approved.ToString("g"), true);
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
+            //Assert.AreEqual(result.TransactionStatusCode, TransactionStatus.Approved.ToString("g"), true);
             Assert.IsNotNull(tranResult.TransactionKey);
 
             string transactionKey = tranResult.TransactionKey;
@@ -282,11 +270,11 @@ namespace PayFabric.Net.Test
             //Test Capture method.
             result = _paymentService.Capture(transactionKey, _amount, _extendedInformation).Result;
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            tranResult = result.Transaction;
+            tranResult = result.TransactionResponse;
 
-            Assert.AreEqual(TransactionStatus.Approved,tranResult.Status);
+            Assert.AreEqual(TransactionStatus.Approved,result.TransactionStatus);
 
             //Re-assigning latest transaction key for next Void method to pass.
             transactionKey = tranResult.TransactionKey;
@@ -295,12 +283,12 @@ namespace PayFabric.Net.Test
             //TODO: need check this late, Authorize.Net does not support this credit 
             if (!isAuthorizeNet)
             {
-                result = _paymentService.Credit(transactionKey, null, _extendedInformation).Result;
+                result = _paymentService.Refund(transactionKey, null, _extendedInformation).Result;
                 Assert.AreEqual(result.Success, true);
-                Assert.IsNotNull(result.Transaction);
+                Assert.IsNotNull(result.TransactionResponse);
 
-                tranResult = result.Transaction;
-                Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
+                tranResult = result.TransactionResponse;
+                Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
             }
             else
             {
@@ -308,10 +296,10 @@ namespace PayFabric.Net.Test
                 result = _paymentService.Void(transactionKey, _extendedInformation).Result;
                 if (!result.Success)
                 {
-                    result = _paymentService.Credit(transactionKey, null, _extendedInformation).Result;
+                    result = _paymentService.Refund(transactionKey, null, _extendedInformation).Result;
                 }
                 Assert.AreEqual(result.Success, true);
-                Assert.IsNotNull(result.Transaction);
+                Assert.IsNotNull(result.TransactionResponse);
 
             }
 
@@ -333,13 +321,13 @@ namespace PayFabric.Net.Test
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
 
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
 
             //Assert.AreEqual(tranResult.ResultCode, "0");
             //Assert.AreEqual(tranResult.ResultMessage, TransactionStatus.Approved.ToString("g"), true);
-            Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
             Assert.IsNotNull(tranResult.TransactionKey);
 
             string transactionKey = tranResult.TransactionKey;
@@ -347,24 +335,24 @@ namespace PayFabric.Net.Test
             //Test Capture method.
             result = _paymentService.Capture(transactionKey, _amount, _extendedInformation).Result;
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            tranResult = result.Transaction;
+            tranResult = result.TransactionResponse;
 
-            Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
 
             // Test Refund
             _amount = 22.99M;
-            result = _paymentService.Refund(_amount, _currency, _goodcard, _extendedInformation).Result;
+            result = _paymentService.Credit(_amount, _currency, _goodcard, _extendedInformation).Result;
 
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-             tranResult = result.Transaction;
+             tranResult = result.TransactionResponse;
 
             //Assert.AreEqual(tranResult.ResultCode, "0");
             //Assert.AreEqual(tranResult.ResultMessage, TransactionStatus.Approved.ToString("g"), true);
-            Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
 
 
         }
@@ -385,13 +373,13 @@ namespace PayFabric.Net.Test
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
 
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
 
             //Assert.AreEqual(tranResult.ResultCode, "0");
             //Assert.AreEqual(tranResult.ResultMessage, TransactionStatus.Approved.ToString("g"), true);
-            Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
             Assert.IsNotNull(tranResult.TransactionKey);
 
             string transactionKey = tranResult.TransactionKey;
@@ -399,11 +387,11 @@ namespace PayFabric.Net.Test
             //Test Capture method.
             result = _paymentService.Capture(transactionKey, _amount, _extendedInformation).Result;
             Assert.AreEqual(result.Success, true);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            tranResult = result.Transaction;
+            tranResult = result.TransactionResponse;
 
-            Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
             transactionKey = tranResult.TransactionKey;
 
             // Test Refund
@@ -412,16 +400,16 @@ namespace PayFabric.Net.Test
                 string referencekey = transactionKey;
                 _amount = 22.99M;
                 _extendedInformation.ReferenceTransactionKey = referencekey;
-                result = _paymentService.Refund(_amount, _currency, _goodcard, _extendedInformation).Result;
+                result = _paymentService.Credit(_amount, _currency, _goodcard, _extendedInformation).Result;
 
                 Assert.AreEqual(result.Success, true);
-                Assert.IsNotNull(result.Transaction);
+                Assert.IsNotNull(result.TransactionResponse);
 
-                tranResult = result.Transaction;
+                tranResult = result.TransactionResponse;
 
                 //Assert.AreEqual(tranResult.ResultCode, "0");
                 //Assert.AreEqual(tranResult.ResultMessage, TransactionStatus.Approved.ToString("g"), true);
-                Assert.AreEqual(TransactionStatus.Approved, tranResult.Status);
+                Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
             }
             else
             {
@@ -429,10 +417,10 @@ namespace PayFabric.Net.Test
                 result = _paymentService.Void(transactionKey, _extendedInformation).Result;
                 if (!result.Success)
                 {
-                    result = _paymentService.Credit(transactionKey, null, _extendedInformation).Result;
+                    result = _paymentService.Refund(transactionKey, null, _extendedInformation).Result;
                 }
                 Assert.AreEqual(result.Success, true);
-                Assert.IsNotNull(result.Transaction);
+                Assert.IsNotNull(result.TransactionResponse);
             }
 
         }
@@ -447,14 +435,14 @@ namespace PayFabric.Net.Test
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
 
             Assert.AreEqual(true,result.Success);
-            Assert.IsNotNull(result.Transaction);
+            Assert.IsNotNull(result.TransactionResponse);
 
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
 
             //Jim: 2/26/2021, Authorize.Net result code is 1
             //Assert.AreEqual(tranResult.ResultCode, "0");
-            Assert.AreEqual(tranResult.Status, TransactionStatus.Approved);
-            //Assert.AreEqual(tranResult.StatusCode, TransactionStatus.Approved.ToString("g"), true);
+            Assert.AreEqual(result.TransactionStatus, TransactionStatus.Approved);
+            //Assert.AreEqual(result.TransactionStatusCode, TransactionStatus.Approved.ToString("g"), true);
             Assert.IsTrue(!string.IsNullOrWhiteSpace(tranResult.AuthorizationCode));
 
 
@@ -480,9 +468,9 @@ namespace PayFabric.Net.Test
             _extendedInformation.InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff");
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
             Assert.AreEqual(result.Success, false);
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
             //Assert.AreEqual(tranResult.ResultCode, "4");
-            Assert.AreEqual(TransactionStatus.Denied, tranResult.Status);
+            Assert.AreEqual(TransactionStatus.Denied, result.TransactionStatus);
        
         }
 
@@ -517,10 +505,10 @@ namespace PayFabric.Net.Test
 
             _amount = 2019M;
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
             Assert.AreEqual(result.Success, false);
             //Assert.AreEqual(tranResult.ResultCode, "12");
-            Assert.AreEqual(TransactionStatus.Denied,tranResult.Status);
+            Assert.AreEqual(TransactionStatus.Denied,result.TransactionStatus);
 
         }
 
@@ -539,10 +527,10 @@ namespace PayFabric.Net.Test
 
             _amount = 1005M;
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
             //Assert.AreEqual(tranResult.ResultCode, "5");
             if(!isAuthorizeNet)
-                Assert.AreEqual(TransactionStatus.Denied,tranResult.Status);
+                Assert.AreEqual(TransactionStatus.Denied,result.TransactionStatus);
         }
 
 
@@ -555,9 +543,9 @@ namespace PayFabric.Net.Test
         {
             _extendedInformation.InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff");
 
-            _goodcard.Number = "000000000000000";
+            _goodcard.Account = "000000000000000";
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
             Assert.AreEqual(result.ResponseCode , "412");
         }
 
@@ -580,8 +568,8 @@ namespace PayFabric.Net.Test
             
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
             Assert.AreEqual(result.Success, false);
-            var tranResult = result.Transaction;
-            Assert.AreEqual(TransactionStatus.Denied,tranResult.Status);
+            var tranResult = result.TransactionResponse;
+            Assert.AreEqual(TransactionStatus.Denied,result.TransactionStatus);
         }
 
 
@@ -598,12 +586,16 @@ namespace PayFabric.Net.Test
             {
                 card = new Card
                 {
-                    FirstName = "PantsON",
-                    LastName = "Fire",
-                    Number = "4111111111111111",
-                    Cvv = "532",
+                    CardHolder = new CardHolder
+                    {
+                        FirstName = "PantsON",
+                        LastName = "Fire",
+                    },
+
+                    Account = "4111111111111111",
+                    Cvc = "532",
                     ExpirationDate = "0925",
-                    Address = new Address
+                    Billto = new Address
                     {
                         City = "Wheton",
                         Country = "USA",
@@ -627,11 +619,11 @@ namespace PayFabric.Net.Test
         public void ValidatePreAuthorizeMethod_CorrectAddress_TestSuccess()
         {
             _extendedInformation.InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff");
-            _goodcard.Address.Line1 = "218 Esat Avenue";
+            _goodcard.Billto.Line1 = "218 Esat Avenue";
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
             Assert.AreEqual(result.Success, true);
-            var tranResult = result.Transaction;
-            Assert.AreEqual(tranResult.AVSAddressResult, "Y");
+            var tranResult = result.TransactionResponse;
+            Assert.AreEqual(tranResult.AVSAddressResponse, "Y");
         }
 
         /// <summary>
@@ -642,19 +634,19 @@ namespace PayFabric.Net.Test
         public void ValidatePreAuthorizeMethod_BILLTOSTREET_PreAuthozationFail()
         {
             _extendedInformation.InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff");
-            _goodcard.Address.Line1 = "668 Esat Avenue";
+            _goodcard.Billto.Line1 = "668 Esat Avenue";
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
             Assert.AreEqual(true,result.Success );
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
             if (!isAuthorizeNet)
             {
-                Assert.AreEqual("X", tranResult.AVSAddressResult);
-                Assert.AreEqual("X", tranResult.AVSZipResult);
+                Assert.AreEqual("X", tranResult.AVSAddressResponse);
+                Assert.AreEqual("X", tranResult.AVSZipResponse);
             }
             else
             {
-                Assert.AreEqual("Y", tranResult.AVSAddressResult);
-                Assert.AreEqual("Y", tranResult.AVSZipResult);
+                Assert.AreEqual("Y", tranResult.AVSAddressResponse);
+                Assert.AreEqual("Y", tranResult.AVSZipResponse);
             }
 
         }
@@ -669,22 +661,22 @@ namespace PayFabric.Net.Test
         {
             _extendedInformation.InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff");
 
-            _goodcard.Cvv = "222";
+            _goodcard.Cvc = "222";
             if (isAuthorizeNet)
             {
-                _goodcard.Cvv = "900";
+                _goodcard.Cvc = "900";
             }
 
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
             Assert.AreEqual(true, result.Success);
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
             if (isAuthorizeNet)
             {
-                Assert.AreEqual(tranResult.CVV2Result, "M");
+                Assert.AreEqual(tranResult.CVV2Response, "M");
             }
             else
             {
-                Assert.AreEqual(tranResult.CVV2Result, "Y");
+                Assert.AreEqual(tranResult.CVV2Response, "Y");
             }
         }
 
@@ -699,20 +691,20 @@ namespace PayFabric.Net.Test
         {
             _extendedInformation.InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff");
 
-            _goodcard.Cvv = "601";
+            _goodcard.Cvc = "601";
             if (isAuthorizeNet)
-                _goodcard.Cvv = "901";
+                _goodcard.Cvc = "901";
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
-            var tranResult = result.Transaction;
+            var tranResult = result.TransactionResponse;
             if (isAuthorizeNet)
             {
                 Assert.AreEqual(false, result.Success);
-                Assert.AreEqual(tranResult.CVV2Result, "N");
+                Assert.AreEqual(tranResult.CVV2Response, "N");
             }
             else
             {
                 Assert.AreEqual(true, result.Success);
-                Assert.AreEqual(tranResult.CVV2Result, "X");
+                Assert.AreEqual(tranResult.CVV2Response, "X");
             }
                 
             

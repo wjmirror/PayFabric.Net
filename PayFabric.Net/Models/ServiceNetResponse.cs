@@ -13,6 +13,11 @@ namespace PayFabric.Net.Models
         public bool Success { get; set; } 
 
         /// <summary>
+        /// The http status code 
+        /// </summary>
+        public string ResponseCode { get; set; }
+
+        /// <summary>
         /// The transaction status, <see cref="TransactionStatus"/>
         /// </summary>
         public TransactionStatus TransactionStatus { get; set; }

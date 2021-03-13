@@ -47,4 +47,8 @@
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\PayFabric.Net\PayFabric.Net.csproj" />
+  </ItemGroup>
+
 </Project>

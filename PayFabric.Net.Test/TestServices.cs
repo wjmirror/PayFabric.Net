@@ -8,7 +8,6 @@ using System.Text;
 using Serilog;
 using Serilog.Extensions.Logging;
 using System.Net.Http;
-using SSCo.PaymentService;
 
 namespace PayFabric.Net.Test
 {

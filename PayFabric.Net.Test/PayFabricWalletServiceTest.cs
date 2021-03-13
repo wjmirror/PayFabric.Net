@@ -3,22 +3,17 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
-using SSCo.PaymentService;
-using SSCo.PaymentService.Models;
 using System.Threading.Tasks;
 using System.Linq;
+using PayFabric.Net.Models;
 
-#if NETSTANDARD
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-#endif
 
-#if NET45
-using Serilog;
-using PayFabric.Net.Logging;
-#endif
+
+
 
 namespace PayFabric.Net.Test
 {
@@ -40,28 +35,23 @@ namespace PayFabric.Net.Test
         {
             TestServices.InitializeService();
 
-#if NETSTANDARD
+
             _walletService = TestServices.ServiceProvider.GetService<IWalletService>();
             _paymentService = TestServices.ServiceProvider.GetService<IPaymentService>();
-#endif
-
-#if NET45
-
-            PayFabricOptions  _payFabricOptions = TestServices.GetPayFabricOptions();
-            ILogger _logger = TestServices.GetLogger<PayFabricPaymentService>();
-            _walletService = new PayFabricWalletService(_payFabricOptions, _logger);
-            _paymentService= new PayFabricPaymentService(_payFabricOptions, _logger);
-#endif
 
             _cardA = new Card
             {
                 Customer = "TESTAUTO",
-                FirstName = "PantsON",
+                CardHolder=new CardHolder
+                {
+ FirstName = "PantsON",
                 LastName = "Fire",
-                Number = "4583194798565295",
-                Cvv = "532",
+                },
+               
+                Account = "4583194798565295",
+                Cvc = "532",
                 ExpirationDate = "0925",
-                Address = new Address
+                Billto = new Address
                 {
                     City = "Wheton",
                     Country = "USA",
@@ -75,12 +65,16 @@ namespace PayFabric.Net.Test
             _cardB = new Card
             {
                 Customer = "TESTAUTO",
-                FirstName = "PantsON",
+                CardHolder=new CardHolder
+                {
+FirstName = "PantsON",
                 LastName = "Fire",
-                Number = "4111111111111111",
-                Cvv = "532",
+                },
+                
+                Account = "4111111111111111",
+                Cvc = "532",
                 ExpirationDate = "0925",
-                Address = new Address
+                Billto = new Address
                 {
                     City = "Wheton",
                     Country = "USA",
@@ -99,7 +93,7 @@ namespace PayFabric.Net.Test
                     DutyAmount = 100M,
                     FreightAmount = 110M,
                     OrderDate = DateTime.Now,
-                    PurchaseOrder = "Po0013",
+                    PONumber = "Po0013",
                     TaxAmount = 43.98M,
                 }
             };
@@ -126,7 +120,7 @@ namespace PayFabric.Net.Test
             Card card = await this._walletService.Get(id);
             Assert.IsNotNull(card);
 
-            Assert.AreEqual(_cardA.FirstName, card.FirstName);
+            Assert.AreEqual(_cardA.CardHolder.FirstName, card.CardHolder.FirstName);
 
             var removeResult = await this._walletService.Remove(id);
             Assert.AreEqual(true, removeResult);
@@ -149,13 +143,16 @@ namespace PayFabric.Net.Test
             //Retrieve CardB
             Card card = await this._walletService.Get(idB);
             Assert.IsNotNull(card);
-            Assert.AreEqual(_cardB.FirstName, card.FirstName);
+            Assert.AreEqual(_cardB.CardHolder.FirstName, card.CardHolder.FirstName);
 
             //Update Card B
             var patchB = new Card()
             {
-                Id = idB,
-                FirstName = "Jim",
+                ID = Guid.Parse(idB),
+                CardHolder=new CardHolder
+                {
+FirstName = "Jim",
+                },
                 ExpirationDate = "0625"
             };
             var updateResultB = await this._walletService.Update(patchB);
@@ -164,14 +161,14 @@ namespace PayFabric.Net.Test
             //Retrieve cardB again 
             card = await this._walletService.Get(idB);
             Assert.IsNotNull(card);
-            Assert.AreEqual("Jim", card.FirstName);
+            Assert.AreEqual("Jim", card.CardHolder.FirstName);
             Assert.AreEqual("0625", card.ExpirationDate);
 
             //Charge on cardB 
             var cb = new Card()
             {
-                Id = idB,
-                Cvv = _cardB.Cvv,
+                ID =Guid.Parse( idB),
+                Cvc = _cardB.Cvc,
                 Customer = _cardB.Customer
             };
             var chargeResult = await this._paymentService.Charge(105M, "USD", cb, _extendedInformation);
@@ -184,8 +181,8 @@ namespace PayFabric.Net.Test
             //Charge on card B again 
             cb = new Card()
             {
-                Id = idB,
-                Cvv = _cardB.Cvv,
+                ID = Guid.Parse( idB),
+                Cvc = _cardB.Cvc,
                 Customer = _cardB.Customer
             };
             chargeResult = await this._paymentService.Charge(115M, "USD", cb, _extendedInformation);
@@ -199,7 +196,7 @@ namespace PayFabric.Net.Test
             //Get all cards of customer TESTAUTO
             var cards = await this._walletService.GetByCustomer("TESTAUTO");
             Assert.IsNotNull(cards);
-            Assert.IsNotNull(cards.Where(e => e.Id == idB).FirstOrDefault());
+            Assert.IsNotNull(cards.Where(e => e.ID == Guid.Parse( idB)).FirstOrDefault());
 
 
             //Remove Card A
@@ -217,12 +214,16 @@ namespace PayFabric.Net.Test
             var testCard = new Card
             {
                 Customer = "TESTAUTO-3",
-                FirstName = "PantsON",
+                CardHolder=new CardHolder
+                {
+FirstName = "PantsON",
                 LastName = "Fire",
-                Number = "4111111111111111",
-                Cvv = "532",
+                },
+                
+                Account = "4111111111111111",
+                Cvc = "532",
                 ExpirationDate = "0925",
-                Address = new Address
+                Billto = new Address
                 {
                     City = "Wheton",
                     Country = "USA",
@@ -231,7 +232,7 @@ namespace PayFabric.Net.Test
                     Zip = "60139",
                     Email = "Jon@johny.com"
                 },
-                IsDefault = true,
+                IsDefaultCard = true,
                 IsSaveCard = true
             };
 
@@ -247,9 +248,9 @@ namespace PayFabric.Net.Test
             {
                 if (card.IsLocked.GetValueOrDefault())
                 {
-                    await this._walletService.Unlock(card.Id);
+                    await this._walletService.Unlock(card.ID.ToString());
                 }
-                await this._walletService.Remove(card.Id);
+                await this._walletService.Remove(card.ID.ToString());
             }
         }
 
@@ -266,9 +267,9 @@ namespace PayFabric.Net.Test
                 {
                     if (card.IsLocked.GetValueOrDefault())
                     {
-                        await this._walletService.Unlock(card.Id);
+                        await this._walletService.Unlock(card.ID.ToString());
                     }
-                    await this._walletService.Remove(card.Id);
+                    await this._walletService.Remove(card.ID.ToString());
                 }
             }
 

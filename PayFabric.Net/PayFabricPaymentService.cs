@@ -361,6 +361,7 @@ namespace PayFabric.Net
         private async Task ParseTransactionReponse(ServiceNetResponse serviceResponse, HttpResponseMessage responseMessage)
         {
             serviceResponse.RawResponse = responseMessage;
+            serviceResponse.ResponseCode = ((int)responseMessage.StatusCode).ToString();
 
             if (responseMessage.StatusCode == HttpStatusCode.OK)
             {

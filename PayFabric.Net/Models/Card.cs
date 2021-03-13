@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Runtime.Serialization;
 using System.Text;
 
 namespace PayFabric.Net.Models
@@ -34,7 +36,8 @@ namespace PayFabric.Net.Models
         /// Expiration date of the credit card in the format of MMYY. Only valid for credit cards.
         /// </summary>
         [MaxLength(4)]
-        public string ExpDate { get; set; }
+        [JsonProperty("ExpDate")]
+        public string ExpirationDate { get; set; }
 
         /// <summary>
         /// Check number. Only valid for eChecks, and required for specific Processors (TeleCheck, Encompass).
@@ -160,6 +163,7 @@ namespace PayFabric.Net.Models
         /// The CVC code of the credit card. 
         /// Note: the CVC is NOT saved anywhere. 
         /// </summary>
+        [JsonIgnore()]
         public string Cvc { get; set; }
 
     }

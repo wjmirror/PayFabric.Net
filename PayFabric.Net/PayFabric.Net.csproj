@@ -6,6 +6,9 @@
     <AssemblyVersion>1.1.0.21103</AssemblyVersion>
     <FileVersion>1.1.0.21103</FileVersion>
   </PropertyGroup>
+  <PropertyGroup>
+    <DocumentationFile>.\bin\$(Configuration)\$(TargetFramework)\PayFabric.Net.xml</DocumentationFile>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
