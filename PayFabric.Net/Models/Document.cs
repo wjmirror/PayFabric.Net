@@ -9,7 +9,7 @@ namespace PayFabric.Net.Models
         /// <summary>
         /// An array of key-value pairs. Usually, the key-value pairs represent the level 2 fields to submit to the gateway.
         /// </summary>
-        public ICollection<PayFabricNameValue> Head { get; set; }
+        public ICollection<NameValue> Head { get; set; }
 
         /// <summary>
         /// An array of columns object.The columns objects represent the columns that belong to a specific line. Usually the columns objects represent the level 3 fields that you can submit to the gateway. Columns object is an array of key-value pairs. The key-value pairs represent the level 3 fields to submit to the gateway.
@@ -25,6 +25,6 @@ namespace PayFabric.Net.Models
         /// <summary>
         /// Address object. no restriction to these address fields, partially input is acceptable.
         /// </summary>
-        public PayFabricAddress DefaultBillTo { get; set; }
+        public Address DefaultBillTo { get; set; }
     }
 }

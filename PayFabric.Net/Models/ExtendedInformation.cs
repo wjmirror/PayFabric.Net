@@ -12,7 +12,7 @@ namespace PayFabric.Net.Models
         public String InvoiceNumber { get; set; }
         public String InvoiceDescription { get; set; }
         public string BatchNumber { get; set; }
-        public PayFabricLevelTwoData LevelTwoData { get; set; }
+        public LevelTwoData LevelTwoData { get; set; }
         public ICollection<PayFabricProduct> LevelThreeData { get; set; }
         public Dictionary<string, object> ExtentionInformation { get; set; }
     }

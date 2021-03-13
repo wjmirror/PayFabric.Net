@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using SSCo.PaymentService;
 using System.Net.Http;
 using System.Net;
 using Newtonsoft.Json.Linq;
@@ -68,7 +67,7 @@ namespace PayFabric.Net
         /// <param name="card"></param>
         /// <param name="extInfo"></param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> Charge(decimal amount, string currency, PayFabricCard card, ExtendedInformation extInfo)
+        public async Task<ServiceNetResponse> Charge(decimal amount, string currency, Card card, ExtendedInformation extInfo)
         {
             return await this.CreateProcessTransaction((transaction) =>
             {
@@ -112,7 +111,7 @@ namespace PayFabric.Net
         /// <param name="card"></param>
         /// <param name="extInfo"></param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> PreAuthorize(decimal amount, string currency, PayFabricCard card, ExtendedInformation extInfo)
+        public async Task<ServiceNetResponse> PreAuthorize(decimal amount, string currency, Card card, ExtendedInformation extInfo)
         {
             return await this.CreateProcessTransaction((transaction) =>
             {
@@ -137,7 +136,7 @@ namespace PayFabric.Net
         /// <param name="card"></param>
         /// <param name="extInfo"></param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> Credit(decimal amount, string currency, PayFabricCard card, ExtendedInformation extInfo)
+        public async Task<ServiceNetResponse> Credit(decimal amount, string currency, Card card, ExtendedInformation extInfo)
         {
             return await this.CreateProcessTransaction((transaction) =>
             {
@@ -169,11 +168,11 @@ namespace PayFabric.Net
 
         #region Transaction functions
 
-        protected virtual async Task<string> CreateTransaction(Action<PayFabricPayload> setupPayLoad)
+        protected virtual async Task<string> CreateTransaction(Action<Transaction> setupPayLoad)
         {
             string key = null;
 
-            var transaction = new PayFabricPayload();
+            var transaction = new Transaction();
             if (!string.IsNullOrWhiteSpace(this.options.SetupId))
                 transaction.SetupId = this.options.SetupId;
 
@@ -230,11 +229,11 @@ namespace PayFabric.Net
             return key;
         }
 
-        protected virtual async Task<ServiceNetResponse> CreateProcessTransaction(Action<PayFabricPayload> setupPayLoad)
+        protected virtual async Task<ServiceNetResponse> CreateProcessTransaction(Action<Transaction> setupPayLoad)
         {
             ServiceNetResponse result = new ServiceNetResponse();
 
-            var transaction = new PayFabricPayload();
+            var transaction = new Transaction();
             if (!string.IsNullOrWhiteSpace(this.options.SetupId))
                 transaction.SetupId = this.options.SetupId;
 
@@ -282,10 +281,10 @@ namespace PayFabric.Net
             return result;
         }
 
-        protected virtual async Task<ServiceNetResponse> ProcessTransaction(Action<PayFabricPayload> setupPayLoad)
+        protected virtual async Task<ServiceNetResponse> ProcessTransaction(Action<Transaction> setupPayLoad)
         {
             ServiceNetResponse result = new ServiceNetResponse();
-            var transaction = new PayFabricPayload();
+            var transaction = new Transaction();
 
             if (setupPayLoad != null)
                 setupPayLoad(transaction);
@@ -406,7 +405,7 @@ namespace PayFabric.Net
             logger.LogTrace(msg);
         }
 
-        private void SetupTransactionDocument (PayFabricPayload transaction, ExtendedInformation extInfo)
+        private void SetupTransactionDocument (Transaction transaction, ExtendedInformation extInfo)
         {
             if (extInfo != null)
             {
@@ -416,13 +415,13 @@ namespace PayFabric.Net
 
                 transaction.Document = new Document()
                 {
-                    Head = new System.Collections.Generic.List<PayFabricNameValue>()
+                    Head = new System.Collections.Generic.List<NameValue>()
                 };
 
                 var head = transaction.Document.Head;
 
                 if (!string.IsNullOrWhiteSpace(extInfo.InvoiceNumber))
-                    head.Add(new PayFabricNameValue()
+                    head.Add(new NameValue()
                     {
                         Name = "InvoiceNumber",
                         Value = extInfo.InvoiceNumber
@@ -433,70 +432,70 @@ namespace PayFabric.Net
                     var lvl2 = extInfo.LevelTwoData;
 
                     if (!string.IsNullOrWhiteSpace(lvl2.PONumber))
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "PONumber",
                             Value = lvl2.PONumber
                         });
 
                     if (lvl2.DiscountAmount != null)
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "DiscountAmount",
                             Value = lvl2.DiscountAmount.Value.ToString()
                         });
 
                     if (lvl2.DutyAmount != null)
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "DutyAmount",
                             Value = lvl2.DutyAmount.Value.ToString()
                         });
 
                     if (lvl2.FreightAmount != null)
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "FreightAmount",
                             Value = lvl2.FreightAmount.Value.ToString()
                         });
 
                     if (lvl2.HandlingAmount != null)
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "HandlingAmount",
                             Value = lvl2.HandlingAmount.Value.ToString()
                         });
 
                     if (lvl2.IsTaxExempt.GetValueOrDefault())
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "TaxExempt",
                             Value = "Y"
                         });
 
                     if (lvl2.TaxAmount != null)
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "TaxAmount",
                             Value = lvl2.TaxAmount.Value.ToString()
                         });
 
                     if (!string.IsNullOrWhiteSpace(lvl2.ShipFromZip))
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "ShipFromZip",
                             Value = lvl2.ShipFromZip
                         });
 
                     if (!string.IsNullOrWhiteSpace(lvl2.ShipToZip))
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "ShipToZip",
                             Value = lvl2.ShipToZip
                         });
 
                     if (lvl2.OrderDate != null)
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "OrderDate",
                             Value = lvl2.OrderDate.Value.ToString("MM/dd/yyyy")
@@ -504,14 +503,14 @@ namespace PayFabric.Net
 
 
                     if (lvl2.VATTaxAmount != null)
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "VATTaxAmount",
                             Value = lvl2.VATTaxAmount.Value.ToString()
                         });
 
                     if (lvl2.VATTaxRate != null)
-                        head.Add(new PayFabricNameValue()
+                        head.Add(new NameValue()
                         {
                             Name = "VATTaxRate",
                             Value = lvl2.VATTaxRate.Value.ToString()

@@ -1,5 +1,4 @@
 ﻿using PayFabric.Net.Models;
-using SSCo.PaymentService;
 using System;
 using System.Collections.Generic;
 using System.Text;

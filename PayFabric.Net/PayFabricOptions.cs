@@ -2,11 +2,10 @@
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
-using SSCo.PaymentService;
 
 namespace PayFabric.Net
 {
-    public partial class PayFabricOptions: IPaymentServiceOptions
+    public partial class PayFabricOptions
     {
         public string BaseUrl { get; set; }
         public string DeviceId { get; set; }

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace PayFabric.Net.Models
 {
-    public class WalletTransactionResult
+    public class WalletTransactionResponse
     {
         public bool Success { get; set; }
         public string Id { get; set; }

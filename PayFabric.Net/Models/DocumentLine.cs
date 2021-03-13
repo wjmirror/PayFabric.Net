@@ -7,6 +7,6 @@ namespace PayFabric.Net.Models
     public partial class DocumentLine
     {
 
-        public ICollection<PayFabricNameValue> Columns { get; set; }
+        public ICollection<NameValue> Columns { get; set; }
     }
 }

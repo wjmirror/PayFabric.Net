@@ -1,8 +1,7 @@
 ﻿### PayFabric.Net is a PayFabric payment Api wrapper. 
 
 #### Instruction 
-1. Add nuget package PayFabric.Net from nuget server sscoappbld.spray.com. 
-2. Add following PayFabricOptions in appSettings
+Add following PayFabricOptions in appSettings
 ```json
 {
     "PayFabricOptions": {

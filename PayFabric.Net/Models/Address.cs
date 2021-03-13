@@ -5,7 +5,7 @@ using System.Text;
 
 namespace PayFabric.Net.Models
 {
-    public partial class PayFabricAddress
+    public partial class Address
     {
         /// <summary>
         /// Unique identifier for this record

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace PayFabric.Net.Models
 {
-    public class PayFabricLevelTwoData
+    public class LevelTwoData
     {
         public string InvoiceNumber { get; set; }
         public string PONumber { get; set; }
