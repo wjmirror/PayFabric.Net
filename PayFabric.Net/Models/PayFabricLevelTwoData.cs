@@ -8,16 +8,16 @@ namespace PayFabric.Net.Models
     {
         public string InvoiceNumber { get; set; }
         public string PONumber { get; set; }
-        public string DiscountAmount { get; set; }
-        public string DutyAmount { get; set; }
-        public string FreightAmount { get; set; }
-        public string HandlingAmount { get; set; }
-        public string TaxExempt { get; set; }
-        public string TaxAmount { get; set; }
+        public decimal? DiscountAmount { get; set; }
+        public decimal? DutyAmount { get; set; }
+        public decimal? FreightAmount { get; set; }
+        public decimal? HandlingAmount { get; set; }
+        public bool? IsTaxExempt { get; set; }
+        public decimal? TaxAmount { get; set; }
         public string ShipFromZip { get; set; }
         public string ShipToZip { get; set; }
-        public string OrderDate { get; set; }
-        public string VATTaxAmount { get; set; }
-        public string VATTaxRate { get; set; }
+        public DateTime? OrderDate { get; set; }
+        public decimal? VATTaxAmount { get; set; }
+        public decimal? VATTaxRate { get; set; }
     }
 }

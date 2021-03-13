@@ -6,7 +6,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Net;
 using PayFabric.Net.Models;
-using PayFabric.Net.Mapper;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Linq;
@@ -42,45 +41,9 @@ namespace PayFabric.Net
             string uri = this.options.BaseUrl + string.Format(apiPath, paras);
             return new Uri(uri);
         }
-        private PayFabricCard Convert2PayFabricCard(Card card)
-        {
-            PayFabricCardMapper pfCardMapper = new PayFabricCardMapper();
-            var pfCard = pfCardMapper.MapToPayFabricCard(card);
-            return pfCard;
-        }
+        
 
-        private Card Convert2Card(PayFabricCard payfabricCard)
-        {
-            Card card = new Card()
-            {
-                Id = payfabricCard.ID,
-                Number = payfabricCard.Account,
-                FirstName = payfabricCard.CardHolder?.FirstName,
-                LastName = payfabricCard.CardHolder?.LastName,
-                Customer = payfabricCard.Customer,
-                ExpirationDate = payfabricCard.ExpDate,
-                IsLocked = payfabricCard.IsLocked,
-                IsDefault = payfabricCard.IsDefaultCard
-            };
-            if (payfabricCard.Billto != null)
-            {
-                var bill = payfabricCard.Billto;
-                card.Address = new Address()
-                {
-                    Line1 = bill.Line1,
-                    Line2 = bill.Line2,
-                    Line3 = bill.Line3,
-                    City = bill.City,
-                    State = bill.State,
-                    Email = bill.Email,
-                    Country = bill.Country,
-                    Zip = bill.Zip
-                };
-            }
-            return card;
-        }
-
-        public async Task<WalletTransactionResult> Create(Card card)
+        public async Task<WalletTransactionResult> Create(PayFabricCard card)
         {
             WalletTransactionResult result = new WalletTransactionResult();
             try
@@ -90,7 +53,7 @@ namespace PayFabric.Net
                 message.Method = HttpMethod.Post;
                 JsonSerializerSettings settings = new JsonSerializerSettings();
                 settings.NullValueHandling = NullValueHandling.Ignore;
-                string payLoad = JsonConvert.SerializeObject(Convert2PayFabricCard(card), settings);
+                string payLoad = JsonConvert.SerializeObject(card, settings);
                 message.Content = new StringContent(payLoad, Encoding.UTF8, "application/json");
                 if (logger != null)
                     logger.LogTrace("Create Wallet Request - PayLoad:{0}", payLoad);
@@ -122,7 +85,7 @@ namespace PayFabric.Net
             return result;
         }
 
-        public async Task<WalletTransactionResult> Update(Card card)
+        public async Task<WalletTransactionResult> Update(PayFabricCard card)
         {
             WalletTransactionResult result = new WalletTransactionResult();
             try
@@ -133,7 +96,7 @@ namespace PayFabric.Net
                 JsonSerializerSettings settings = new JsonSerializerSettings();
                 settings.NullValueHandling = NullValueHandling.Ignore;
 
-                PayFabricCard payFabricCard = Convert2PayFabricCard(card);
+                PayFabricCard payFabricCard = card;
 
                 if (!string.IsNullOrWhiteSpace(payFabricCard.Account))
                     throw new Exception("PayFabric is unable to update the account/card number. To update an account/card number, delete the old Wallet entry and create a new one");
@@ -176,9 +139,9 @@ namespace PayFabric.Net
             return result;
         }
 
-        public async Task<Card> Get(string Id)
+        public async Task<PayFabricCard> Get(string Id)
         {
-            Card card = null;
+            PayFabricCard card = null;
 
             HttpRequestMessage message = new HttpRequestMessage();
             message.RequestUri = this.parseUri("/wallet/get/{0}", Id);
@@ -194,8 +157,7 @@ namespace PayFabric.Net
                 if (responseMessage.StatusCode == HttpStatusCode.OK)
                 {
                     JObject jobj = JObject.Parse(responseContent);
-                    PayFabricCard payFabricCard = jobj.ToObject<PayFabricCard>();
-                    card = this.Convert2Card(payFabricCard);
+                    card = jobj.ToObject<PayFabricCard>();
                 }
                 else
                 {
@@ -206,9 +168,9 @@ namespace PayFabric.Net
             return card;
         }
 
-        public async Task<ICollection<Card>> GetByCustomer(string customerNumber)
+        public async Task<ICollection<PayFabricCard>> GetByCustomer(string customerNumber)
         {
-            ICollection<Card> cards = null;
+            ICollection<PayFabricCard> cards = null;
 
             HttpRequestMessage message = new HttpRequestMessage();
             message.RequestUri = this.parseUri("/wallet/getByCustomer?customer={0}&tender=CreditCard", customerNumber);
@@ -224,8 +186,7 @@ namespace PayFabric.Net
                 if (responseMessage.StatusCode == HttpStatusCode.OK)
                 {
                     JArray jobj = JArray.Parse(responseContent);
-                    var payFabricCards = jobj.ToObject<List<PayFabricCard>>();
-                    cards = payFabricCards.Select(pf => this.Convert2Card(pf)).ToList();
+                    cards = jobj.ToObject<List<PayFabricCard>>();
                 }
                 else
                 {

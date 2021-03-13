@@ -4,7 +4,7 @@ using System.Text;
 
 namespace PayFabric.Net.Models
 {
-    public enum WalletEntryTypeEnum
+    public enum TenderTypeEnum
     {
         CreditCard = 0,
         ECheck = 1

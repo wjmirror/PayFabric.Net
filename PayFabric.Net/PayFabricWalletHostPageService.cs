@@ -1,4 +1,5 @@
-﻿using SSCo.PaymentService;
+﻿using PayFabric.Net.Models;
+using SSCo.PaymentService;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,7 +9,7 @@ namespace PayFabric.Net
 {
     public class PayFabricWalletHostPageService : IPayFabricWalletHostPageService
     {
-        public string GetCreateWalletEntryUrl(string customerNumber, WalletEntryTypeEnum walletEntry)
+        public string GetCreateWalletEntryUrl(string customerNumber, TenderTypeEnum walletEntry)
         {
             throw new NotImplementedException();
         }
@@ -28,7 +29,7 @@ namespace PayFabric.Net
     public interface IPayFabricWalletHostPageService
     {
         Task<string> GetSecurityToken();
-        string GetCreateWalletEntryUrl(string customerNumber, WalletEntryTypeEnum walletEntry);
+        string GetCreateWalletEntryUrl(string customerNumber, TenderTypeEnum walletEntry);
         string GetUpdateWalletEntryUrl(string cardId, Dictionary<string, string> options);
     }
 }

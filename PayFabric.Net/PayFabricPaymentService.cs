@@ -6,7 +6,6 @@ using System.Net.Http;
 using System.Net;
 using Newtonsoft.Json.Linq;
 using System.Threading.Tasks;
-using PayFabric.Net.Mapper;
 using PayFabric.Net.Models;
 using Newtonsoft.Json;
 using System.IO;
@@ -49,52 +48,14 @@ namespace PayFabric.Net
         /// <returns></returns>
         public async Task<ServiceNetResponse> Capture(string transactionKey, decimal? amount, ExtendedInformation extInfo)
         {
-            if (amount == null)
+
+            return await this.ProcessTransaction((transaction) =>
             {
-                var url = this.parseUri("/reference/{0}?trxtype={1}", transactionKey, PayFabricTransactionType.SHIP.ToString("g"));
-                return await this.ProcessTransaction(url);
-            }
+                transaction.Type = TransactionType.Capture.ToString("g");
+                transaction.ReferenceKey = transactionKey;
+                transaction.Amount = amount;
+            });
 
-
-            ServiceNetResponse serviceNetResponse = new ServiceNetResponse();
-            try
-            {
-                HttpRequestMessage message = new HttpRequestMessage();
-
-                message.RequestUri = this.parseUri("/transaction/process");
-                message.Method = HttpMethod.Post;
-                JObject jObject = new JObject(
-                    new JProperty("Amount", amount.ToString()),
-                    new JProperty("Type", PayFabricTransactionType.SHIP.ToString("g")),
-                    new JProperty("ReferenceKey", transactionKey));
-                string payLoad = jObject.ToString();
-
-                message.Content = new StringContent(payLoad, Encoding.UTF8, "application/json");
-                logger.LogTrace("Capture Request - POST: PayLoad:{0}", payLoad);
-
-
-                using (HttpResponseMessage responseMessage = await this.httpClient.SendAsync(message))
-                {
-                    await LogResponse(responseMessage);
-                    if (responseMessage.StatusCode == HttpStatusCode.OK)
-                    {
-                        await ParseSuccessResponse(serviceNetResponse, responseMessage);
-                    }
-                    else
-                    {
-                        logger.LogError($"Error in Capture transaction, Transaction Key:{transactionKey}, Amount: {amount}, HttpStatus: {responseMessage.StatusCode}, HttpMessage: {responseMessage.ReasonPhrase}");
-                        await ParseFailerResponse(serviceNetResponse, responseMessage);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, $"Error in processing capture transaction, transaction key: {transactionKey}, amount: {amount} .");
-                serviceNetResponse.Success = false;
-                serviceNetResponse.ResponseMessage = ex.Message;
-            }
-
-            return serviceNetResponse;
         }
 
 
@@ -107,11 +68,19 @@ namespace PayFabric.Net
         /// <param name="card"></param>
         /// <param name="extInfo"></param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> Charge(decimal amount, string currency, Card card, ExtendedInformation extInfo)
+        public async Task<ServiceNetResponse> Charge(decimal amount, string currency, PayFabricCard card, ExtendedInformation extInfo)
         {
-            PayFabricPayloadMapper payFabricPayloadMapper = new PayFabricPayloadMapper();
-            PayFabricPayload payLaod = payFabricPayloadMapper.MapToPayFabricPayload(amount, currency, card, extInfo, PayFabricTransactionType.SALE.ToString("g"), options);
-            return await CreateTransaction(payLaod);
+            return await this.CreateProcessTransaction((transaction) =>
+            {
+                transaction.Type = TransactionType.Sale.ToString("g");
+                transaction.Amount = amount;
+                transaction.Currency = currency;
+                transaction.Card = card;
+                if (!string.IsNullOrWhiteSpace(extInfo.Customer))
+                    transaction.Customer = extInfo.Customer;
+
+                SetupTransactionDocument(transaction, extInfo);
+            });
         }
         /// <summary>
         /// Type: Credit
@@ -121,15 +90,18 @@ namespace PayFabric.Net
         /// <param name="amount"></param>
         /// <param name="extInfo"></param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> Credit(string transactionKey, decimal? amount, ExtendedInformation extInfo)
+        public async Task<ServiceNetResponse> Refund(string transactionKey, decimal? amount, ExtendedInformation extInfo)
         {
             if (amount.HasValue)
             {
-                throw new ArgumentException("Sorry, Payfabric does not support parital credit. Please use Refund function.");
+                throw new ArgumentException("Sorry, Payfabric does not support parital Refund. Please use Credit function.");
             }
 
-            Uri uri = this.parseUri(string.Format("/reference/{0}?trxtype={1}", transactionKey, PayFabricTransactionType.CREDIT.ToString("g")));
-            return await ProcessTransaction(uri);
+            return await this.ProcessTransaction((transaction) =>
+            {
+                transaction.Type = TransactionType.Refund.ToString("g");
+                transaction.ReferenceKey = transactionKey;
+            });
 
         }
         /// <summary>
@@ -140,11 +112,19 @@ namespace PayFabric.Net
         /// <param name="card"></param>
         /// <param name="extInfo"></param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> PreAuthorize(decimal amount, string currency, Card card, ExtendedInformation extInfo)
+        public async Task<ServiceNetResponse> PreAuthorize(decimal amount, string currency, PayFabricCard card, ExtendedInformation extInfo)
         {
-            PayFabricPayloadMapper payFabricPayloadMapper = new PayFabricPayloadMapper();
-            PayFabricPayload payLaod = payFabricPayloadMapper.MapToPayFabricPayload(amount, currency, card, extInfo, PayFabricTransactionType.BOOK.ToString("g"), options);
-            return await CreateTransaction(payLaod);
+            return await this.CreateProcessTransaction((transaction) =>
+            {
+                transaction.Type = TransactionType.Authorization.ToString("g");
+                transaction.Amount = amount;
+                transaction.Currency = currency;
+                transaction.Card = card;
+                if (!string.IsNullOrWhiteSpace(extInfo.Customer))
+                    transaction.Customer = extInfo.Customer;
+
+                SetupTransactionDocument(transaction, extInfo);
+            });
         }
 
 
@@ -157,11 +137,19 @@ namespace PayFabric.Net
         /// <param name="card"></param>
         /// <param name="extInfo"></param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> Refund(decimal amount, string currency, Card card, ExtendedInformation extInfo)
+        public async Task<ServiceNetResponse> Credit(decimal amount, string currency, PayFabricCard card, ExtendedInformation extInfo)
         {
-            PayFabricPayloadMapper payFabricPayloadMapper = new PayFabricPayloadMapper();
-            PayFabricPayload payLaod = payFabricPayloadMapper.MapToPayFabricPayload(amount, currency, card, extInfo, PayFabricTransactionType.CREDIT.ToString("g"), options);
-            return await CreateTransaction(payLaod);
+            return await this.CreateProcessTransaction((transaction) =>
+            {
+                transaction.Type = TransactionType.Refund.ToString("g");
+                transaction.Amount = amount;
+                transaction.Currency = currency;
+                transaction.Card = card;
+                if (!string.IsNullOrWhiteSpace(extInfo.Customer))
+                    transaction.Customer = extInfo.Customer;
+
+                SetupTransactionDocument(transaction, extInfo);
+            });
         }
         /// <summary>
         /// Type:VOID
@@ -172,9 +160,196 @@ namespace PayFabric.Net
         /// <returns></returns>
         public async Task<ServiceNetResponse> Void(string transactionKey, ExtendedInformation extInfo)
         {
-            Uri uri = this.parseUri(string.Format("/reference/{0}?trxtype={1}", transactionKey, PayFabricTransactionType.Void.ToString("g")));
-            return await ProcessTransaction(uri);
+            return await this.ProcessTransaction((transaction) =>
+            {
+                transaction.Type = TransactionType.Void.ToString("g");
+                transaction.ReferenceKey = transactionKey;
+            });
         }
+
+        #region Transaction functions
+
+        protected virtual async Task<string> CreateTransaction(Action<PayFabricPayload> setupPayLoad)
+        {
+            string key = null;
+
+            var transaction = new PayFabricPayload();
+            if (!string.IsNullOrWhiteSpace(this.options.SetupId))
+                transaction.SetupId = this.options.SetupId;
+
+            if (setupPayLoad != null)
+                setupPayLoad(transaction);
+
+            if (string.IsNullOrWhiteSpace(transaction.Type))
+                throw new Exception("The Transaction Type must be set. ");
+
+            if (transaction.Amount == null)
+                throw new Exception("The Transaction Amount must be set.");
+
+            if (string.IsNullOrWhiteSpace(transaction.Currency))
+                throw new Exception("The currency must be set.");
+
+            try
+            {
+                HttpRequestMessage message = new HttpRequestMessage();
+                message.RequestUri = this.parseUri("/transaction/create");
+                message.Method = HttpMethod.Post;
+                JsonSerializerSettings settings = new JsonSerializerSettings();
+                settings.NullValueHandling = NullValueHandling.Ignore;
+                string payloadString = JsonConvert.SerializeObject(transaction, settings);
+                message.Content = new StringContent(payloadString, Encoding.UTF8, "application/json");
+                if (this.logger.IsEnabled(LogLevel.Trace))
+                    logger.LogTrace("Create Transaction Request - PayLoad:{0}", payloadString);
+
+                using (HttpResponseMessage responseMessage = await this.httpClient.SendAsync(message))
+                {
+
+                    await TraceResponse(responseMessage);
+
+                    if (responseMessage.StatusCode == HttpStatusCode.OK)
+                    {
+                        string responseConent = await responseMessage.Content.ReadAsStringAsync();
+                        JObject jobj = JObject.Parse(responseConent);
+                        key = jobj.Value<string>("Key");
+                    }
+                    else
+                    {
+                        string responseConent = await responseMessage.Content.ReadAsStringAsync();
+                        this.logger.LogError($"Create Transaction Error, HttpStatus:{responseMessage.StatusCode}\r\n Message: {responseMessage.ReasonPhrase}\r\n Content:  {responseConent}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                string cn = transaction.Card?.Account;
+                if (!string.IsNullOrWhiteSpace(cn) && cn.Length >= 4)
+                    cn = cn.Substring(cn.Length - 4);
+                logger.LogError(ex, $"Exception in Create Transaction, Transaction Type: {transaction.Type}, Customer: {transaction.Customer},  Card Id: {transaction.Card?.ID}, Card Number End With: {cn} ");
+            }
+
+            return key;
+        }
+
+        protected virtual async Task<ServiceNetResponse> CreateProcessTransaction(Action<PayFabricPayload> setupPayLoad)
+        {
+            ServiceNetResponse result = new ServiceNetResponse();
+
+            var transaction = new PayFabricPayload();
+            if (!string.IsNullOrWhiteSpace(this.options.SetupId))
+                transaction.SetupId = this.options.SetupId;
+
+            if (setupPayLoad != null)
+                setupPayLoad(transaction);
+
+            if (string.IsNullOrWhiteSpace(transaction.Type))
+                throw new Exception("The Transaction Type must be set. ");
+
+            if (transaction.Amount == null)
+                throw new Exception("The Transaction Amount must be set.");
+
+            if (string.IsNullOrWhiteSpace(transaction.Currency))
+                throw new Exception("The currency must be set.");
+
+            try
+            {
+                string urlPath = "/transaction/process";
+                if (!string.IsNullOrWhiteSpace(transaction.Card?.Cvc))
+                    urlPath += $"?cvc={transaction.Card.Cvc}";
+
+                HttpRequestMessage message = new HttpRequestMessage();
+                message.RequestUri = this.parseUri(urlPath);
+                message.Method = HttpMethod.Post;
+                JsonSerializerSettings settings = new JsonSerializerSettings();
+                settings.NullValueHandling = NullValueHandling.Ignore;
+                string payloadString = JsonConvert.SerializeObject(transaction, settings);
+                message.Content = new StringContent(payloadString, Encoding.UTF8, "application/json");
+                if (this.logger.IsEnabled(LogLevel.Trace))
+                    logger.LogTrace("Create Transaction Request - PayLoad:{0}", payloadString);
+
+                using (HttpResponseMessage responseMessage = await this.httpClient.SendAsync(message))
+                {
+                    await TraceResponse(responseMessage);
+                    await ParseTransactionReponse(result, responseMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                string cn = transaction.Card?.Account;
+                if (!string.IsNullOrWhiteSpace(cn) && cn.Length >= 4)
+                    cn = cn.Substring(cn.Length - 4);
+                logger.LogError(ex, $"Exception in Create Transaction, Transaction Type: {transaction.Type}, Customer: {transaction.Customer},  Card Id: {transaction.Card?.ID}, Card Number End With: {cn} ");
+            }
+            return result;
+        }
+
+        protected virtual async Task<ServiceNetResponse> ProcessTransaction(Action<PayFabricPayload> setupPayLoad)
+        {
+            ServiceNetResponse result = new ServiceNetResponse();
+            var transaction = new PayFabricPayload();
+
+            if (setupPayLoad != null)
+                setupPayLoad(transaction);
+
+
+            HttpRequestMessage message = new HttpRequestMessage();
+
+            //Process a Saved transaction
+            if (!string.IsNullOrWhiteSpace(transaction.Key))
+            {
+                string urlPath = $"/transaction/process/{transaction.Key}";
+                if (!string.IsNullOrWhiteSpace(transaction.Card?.Cvc))
+                    urlPath += $"?cvc={transaction.Card.Cvc}";
+
+                message.RequestUri = this.parseUri(urlPath);
+                message.Method = HttpMethod.Get;
+
+                if (this.logger.IsEnabled(LogLevel.Trace))
+                    logger.LogTrace("Process Saved Transaction - Key:{0}", transaction.Key);
+
+            }
+            // Process a reference transaction
+            else if (!string.IsNullOrWhiteSpace(transaction.ReferenceKey)) 
+            {
+                if (string.IsNullOrWhiteSpace(transaction.Type))
+                    throw new Exception("The transaction type must be set for a reference transaction.");
+
+                string urlPath = $"/reference/{transaction.Key}?trxtype={transaction.Type}";
+                message.RequestUri = this.parseUri(urlPath);
+                message.Method = HttpMethod.Post;
+
+                JsonSerializerSettings settings = new JsonSerializerSettings();
+                settings.NullValueHandling = NullValueHandling.Ignore;
+                string payloadString = JsonConvert.SerializeObject(transaction, settings);
+                message.Content = new StringContent(payloadString, Encoding.UTF8, "application/json");
+
+                if (this.logger.IsEnabled(LogLevel.Trace))
+                    logger.LogTrace("Process Reference Transaction - PayLoad:{0}", payloadString);
+            }
+            else
+            {
+                throw new Exception("Either a transaction Key or ReferenceKey must be set.");
+            }
+
+            try
+            {
+                using (HttpResponseMessage responseMessage = await this.httpClient.SendAsync(message))
+                {
+                    await TraceResponse(responseMessage);
+
+                    await ParseTransactionReponse(result, responseMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                result.ServiceException = ex;
+                string cn = transaction.Card?.Account;
+                if (!string.IsNullOrWhiteSpace(cn) && cn.Length >= 4)
+                    cn = cn.Substring(cn.Length - 4);
+                logger.LogError(ex, $"Exception in Create Transaction, Transaction Type: {transaction.Type}, Customer: {transaction.Customer},  Card Id: {transaction.Card?.ID}, Card Number End With: {cn} ");
+            }
+            return result;
+        }
+        #endregion
 
         #region Private functions
 
@@ -184,141 +359,34 @@ namespace PayFabric.Net
             return new Uri(uri);
         }
 
-        private async Task<ServiceNetResponse> CreateTransaction(PayFabricPayload payload)
+        private async Task ParseTransactionReponse(ServiceNetResponse serviceResponse, HttpResponseMessage responseMessage)
         {
-            ServiceNetResponse serviceResponse = new ServiceNetResponse();
-            try
+            serviceResponse.RawResponse = responseMessage;
+
+            if (responseMessage.StatusCode == HttpStatusCode.OK)
             {
-                HttpRequestMessage message = new HttpRequestMessage();
-                message.RequestUri = this.parseUri("/transaction/create");
-                message.Method = HttpMethod.Post;
-                JsonSerializerSettings settings = new JsonSerializerSettings();
-                settings.NullValueHandling = NullValueHandling.Ignore;
-                string payloadString = JsonConvert.SerializeObject(payload,settings);
-                message.Content = new StringContent(payloadString, Encoding.UTF8, "application/json");
-                logger.LogTrace("Create Transaction Request - PayLoad:{0}", payloadString);
-                using (HttpResponseMessage responseMessage = await this.httpClient.SendAsync(message))
-                {
+                string responseConent = await responseMessage.Content.ReadAsStringAsync();
+                var transResponse = JsonConvert.DeserializeObject<TransactionResponse>(responseConent);
+                serviceResponse.TransactionResponse = transResponse;
+                TransactionStatus status;
+                Enum.TryParse<TransactionStatus>(transResponse.Status, out status);
+                serviceResponse.TransactionStatus = status;
+                if (TransactionStatus.Approved == serviceResponse.TransactionStatus)
+                    serviceResponse.Success = true;
 
-                    await LogResponse(responseMessage);
-
-                    if (responseMessage.StatusCode == HttpStatusCode.OK)
-                    {
-                        string createResponse = await responseMessage.Content.ReadAsStringAsync();
-
-                        JObject jobj = JObject.Parse(createResponse);
-                        string transactionKey = jobj.Value<string>("Key");
-                        serviceResponse.Transaction = new TransactionResult { TransactionKey = transactionKey };
-                        Uri uri = null;
-                        if (payload.Card?.Cvc != null)
-                        {
-                            uri = this.parseUri(string.Format("/transaction/process/{0}?cvc={1}", transactionKey, payload.Card.Cvc));
-                        }
-                        else
-                        {
-                            uri = this.parseUri(string.Format("/transaction/process/{0}", transactionKey));
-                        }
-
-                        return await ProcessTransaction(uri);
-                    }
-                    else
-                    {
-                        string cn = payload.Card?.Account;
-                        if (!string.IsNullOrWhiteSpace(cn) && cn.Length >= 4)
-                            cn = cn.Substring(cn.Length - 4);
-                        logger.LogError($"Error in Create Transaction, Transaction Type: {payload.Type}, Customer: {payload.Customer},  Card Id: {payload.Card?.ID}, Card Number End With: {cn} ");
-                        await ParseFailerResponse(serviceResponse, responseMessage);
-                    }
-                }
             }
-            catch (Exception ex)
+            else
             {
-                string cn = payload.Card?.Account;
-                if (!string.IsNullOrWhiteSpace(cn) && cn.Length >= 4)
-                    cn = cn.Substring(cn.Length - 4);
-                logger.LogError(ex, $"Exception in Create Transaction, Transaction Type: {payload.Type}, Customer: {payload.Customer},  Card Id: {payload.Card?.ID}, Card Number End With: {cn} ");
-
-                serviceResponse.Success = false;
-                serviceResponse.ResponseMessage = "Failed: " + ex.Message;
+                string responseConent = await responseMessage.Content.ReadAsStringAsync();
+                this.logger.LogError($"Transaction Error, HttpStatus:{responseMessage.StatusCode}\r\n Message: {responseMessage.ReasonPhrase}\r\n Content:  {responseConent}");
             }
-            // 2nd Phase of Process Transaction failed . Only Create transaction Successfull . contain TransactionKey
-            return serviceResponse;
         }
 
-        private async Task<ServiceNetResponse> ProcessTransaction(Uri uri)
+        private async Task TraceResponse(HttpResponseMessage responseMessage)
         {
-            HttpRequestMessage message = new HttpRequestMessage();
-            message.RequestUri = uri;
-            message.Method = HttpMethod.Get;
-            logger.LogTrace("Process Request - GET" + uri.ToString());
-            ServiceNetResponse serviceResponse = new ServiceNetResponse();
-            try
-            {
-                using (HttpResponseMessage responseMessage = this.httpClient.SendAsync(message).Result)
-                {
+            if (!this.logger.IsEnabled(LogLevel.Trace))
+                return;
 
-                    await LogResponse(responseMessage);
-                    if (responseMessage.StatusCode == HttpStatusCode.OK)
-                    {
-                        await ParseSuccessResponse(serviceResponse, responseMessage);
-                    }
-                    else
-                    {
-                        logger.LogError($"Error in Process Transaction, Uri: {uri}, HttpStatus: {responseMessage.StatusCode}, HttpMessage: {responseMessage.ReasonPhrase}");
-                        await ParseFailerResponse(serviceResponse, responseMessage);
-                    }
-                }
-            }
-            catch(Exception ex)
-            {
-                logger.LogError(ex, $"Exception in Process Transaction, Uri: {uri}");
-                serviceResponse.Success = false;
-                serviceResponse.ResponseMessage = ex.Message;
-            }
-            return serviceResponse;
-        }
-
-
-        private async Task ParseSuccessResponse(ServiceNetResponse serviceResponse, HttpResponseMessage responseMessage)
-        {
-            serviceResponse.ResponseCode = ((int)responseMessage.StatusCode).ToString();
-            serviceResponse.ResponseMessage = responseMessage.ReasonPhrase;
-            serviceResponse.ResponseDateTime = responseMessage.Headers.Date?.Date.ToLongDateString();
-
-            string processResponse = await responseMessage.Content.ReadAsStringAsync();
-            serviceResponse.RawResponse = processResponse;
-
-            PayFabricResponse pResponse = JsonConvert.DeserializeObject<PayFabricResponse>(processResponse);
-
-            PayFabricResponseMapper payFabricResponseMapper = new PayFabricResponseMapper();
-            payFabricResponseMapper.MaptoServiceNetResponse(serviceResponse, pResponse);
-
-        }
-
-        private async Task ParseFailerResponse(ServiceNetResponse serviceResponse, HttpResponseMessage responseMessage)
-        {
-            serviceResponse.Success = false;
-            serviceResponse.ResponseCode = ((int)responseMessage.StatusCode).ToString("g");
-            serviceResponse.ResponseMessage = responseMessage.ReasonPhrase;
-            serviceResponse.ResponseDateTime = responseMessage.Headers.Date.ToString();
-            
-            string resultMessage = responseMessage.ReasonPhrase;
-
-            try
-            {
-                string responseContent = await responseMessage.Content.ReadAsStringAsync();
-                serviceResponse.RawResponse = responseContent;
-                resultMessage = resultMessage + ", " + responseContent;
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning("Can't Parse Failure Message: {0}", ex.Message);
-            }
-            serviceResponse.Transaction = new TransactionResult { Status= TransactionStatus.Failure, StatusCode="Failure", ResultCode= "Failure", ResultMessage = resultMessage };
-        }
-
-        private async Task LogResponse(HttpResponseMessage responseMessage)
-        {
             string msgBody = string.Empty;
             try
             {
@@ -338,7 +406,136 @@ namespace PayFabric.Net
             logger.LogTrace(msg);
         }
 
+        private void SetupTransactionDocument (PayFabricPayload transaction, ExtendedInformation extInfo)
+        {
+            if (extInfo != null)
+            {
 
+                if (string.IsNullOrWhiteSpace(transaction.Customer) && !string.IsNullOrWhiteSpace(extInfo.Customer))
+                    transaction.Customer = extInfo.Customer;
+
+                transaction.Document = new Document()
+                {
+                    Head = new System.Collections.Generic.List<PayFabricNameValue>()
+                };
+
+                var head = transaction.Document.Head;
+
+                if (!string.IsNullOrWhiteSpace(extInfo.InvoiceNumber))
+                    head.Add(new PayFabricNameValue()
+                    {
+                        Name = "InvoiceNumber",
+                        Value = extInfo.InvoiceNumber
+                    });
+
+                if (extInfo.LevelTwoData != null)
+                {
+                    var lvl2 = extInfo.LevelTwoData;
+
+                    if (!string.IsNullOrWhiteSpace(lvl2.PONumber))
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "PONumber",
+                            Value = lvl2.PONumber
+                        });
+
+                    if (lvl2.DiscountAmount != null)
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "DiscountAmount",
+                            Value = lvl2.DiscountAmount.Value.ToString()
+                        });
+
+                    if (lvl2.DutyAmount != null)
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "DutyAmount",
+                            Value = lvl2.DutyAmount.Value.ToString()
+                        });
+
+                    if (lvl2.FreightAmount != null)
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "FreightAmount",
+                            Value = lvl2.FreightAmount.Value.ToString()
+                        });
+
+                    if (lvl2.HandlingAmount != null)
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "HandlingAmount",
+                            Value = lvl2.HandlingAmount.Value.ToString()
+                        });
+
+                    if (lvl2.IsTaxExempt.GetValueOrDefault())
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "TaxExempt",
+                            Value = "Y"
+                        });
+
+                    if (lvl2.TaxAmount != null)
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "TaxAmount",
+                            Value = lvl2.TaxAmount.Value.ToString()
+                        });
+
+                    if (!string.IsNullOrWhiteSpace(lvl2.ShipFromZip))
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "ShipFromZip",
+                            Value = lvl2.ShipFromZip
+                        });
+
+                    if (!string.IsNullOrWhiteSpace(lvl2.ShipToZip))
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "ShipToZip",
+                            Value = lvl2.ShipToZip
+                        });
+
+                    if (lvl2.OrderDate != null)
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "OrderDate",
+                            Value = lvl2.OrderDate.Value.ToString("MM/dd/yyyy")
+                        });
+
+
+                    if (lvl2.VATTaxAmount != null)
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "VATTaxAmount",
+                            Value = lvl2.VATTaxAmount.Value.ToString()
+                        });
+
+                    if (lvl2.VATTaxRate != null)
+                        head.Add(new PayFabricNameValue()
+                        {
+                            Name = "VATTaxRate",
+                            Value = lvl2.VATTaxRate.Value.ToString()
+                        });
+                }
+
+                if (transaction.Document.Head.Count == 0)
+                    transaction.Document.Head = null;
+
+                if(extInfo.LevelThreeData!=null && extInfo.LevelThreeData.Count > 0)
+                {
+                    //TODO: parse the level three data
+                }
+                
+                //set pf.document is null if there is no actual content
+                if (transaction.Document.Lines == null &&
+                    transaction.Document.Head == null &&
+                    transaction.Document.DefaultBillTo == null
+                    && string.IsNullOrWhiteSpace(transaction.Document.UserDefined))
+                    transaction.Document = null;
+                    
+
+            }
+        }
         #endregion
     }
 }

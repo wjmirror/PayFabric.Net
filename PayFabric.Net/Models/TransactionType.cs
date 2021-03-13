@@ -4,7 +4,7 @@ using System.Text;
 
 namespace PayFabric.Net.Models
 {
-    public enum PayFabricTransactionType
+    public enum TransactionType
     {
         /// <summary>
         /// A Sale at one processor may be called Capture at another. An approved Sale is an immediate charge to the customer’s credit card or account. Money will not be moved until settlement has occurred. A Sale can only be reversed with a Void or a Refund. A Sale transaction does the same thing regardless of it being a credit card transaction, an eCheck transaction, or an ACH transaction.
@@ -28,7 +28,7 @@ namespace PayFabric.Net.Models
         /// A Capture may also be known as Capture or Delayed Capture. A Capture can only be issued for a transaction that previously has been a Authorization. Under ordinary circumstances, a Capture is assured approval as long as the amount is equal to or less than the original Authorization amount and the Capture transaction is sent before the Authorization has expired. A Capture results in an immediate charge to the customer’s credit card or account. If the Capture is for less than the original Authorization amount, the remainder of the original Authorization amount is released back to the customer’s credit line or account.
         /// 
         /// A Capture transaction can be reversed by issuing a Refund or Void.
-        ///
+        /// 
         /// NOTE: Some gateways do not allow Capture transactions with amounts greater than the original Authorization amount. Please check with your gateway to see if that feature is available.
         /// </summary>
         Capture,
@@ -44,6 +44,8 @@ namespace PayFabric.Net.Models
         /// A Force is used to enter an already approved authorization/transaction. A Force is typically used for capturing a phone or voice authorization. When entering a Force you will be required to enter the authorization code.
         /// 
         /// A Force transaction can be reversed by issuing a Refund or a Void.
+        /// 
+        /// NOTE: Authorization code from the payment gateway is required to process Force transactions. Cybersource gateway currently does not support Force transaction type.
         /// </summary>
         Force,
 
@@ -51,7 +53,6 @@ namespace PayFabric.Net.Models
         /// A Void is issued for an unsettled approved transaction. When a Void is successfully issued, neither the Void nor the original transaction will appear on the customer’s statement. A Void can only be issued against an unsettled transaction. When a Void is sent, if the original transaction has already been settled, the Void will be denied and a warning will be displayed. A Credit Card settled Sale transaction must be reversed with a Refund.
         /// </summary>
         Void,
-
 
         /// <summary>
         /// A Verify is used to validate credit card number. It's not a payment, PayFabric won't settle Verify transactions, and unable to reverse Verify transactions. Verify transaction only supports in Create Transaction/Update Transaction/Process Transaction APIs, it is not available in portal and hosted payment page. Only EVO gateway supports Verify transaction with Credit Card payment method. PayFabric will set tranaction's Amount to 0.00 if anything other than 0.00 is passed through for Verify transaction.
