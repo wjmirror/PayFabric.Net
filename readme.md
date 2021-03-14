@@ -1,6 +1,6 @@
-﻿### PayFabric.Net is a PayFabric payment Api client library on .net standard 2.0. 
-This is not an official .net library from PayFabric.  PayFabric does not have a .net library. It only has a Api document repository on github. 
-https://github.com/PayFabric/APIs/blob/master/PayFabric/README.md 
+﻿### PayFabric.Net is a PayFabric Api client library on .net standard 2.0. 
+This is NOT an official .net library from PayFabric.  It supports PayFabric Api 3.0. 
+PayFabric Api document: https://github.com/PayFabric/APIs/blob/master/PayFabric/README.md 
 
 Author: Jim Wang  
 jim.wang1014@gmail.com

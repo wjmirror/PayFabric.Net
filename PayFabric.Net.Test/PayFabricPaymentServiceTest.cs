@@ -202,8 +202,8 @@ namespace PayFabric.Net.Test
                 },
                 ExtentionInformation = new Dictionary<string, object>()
                 {
-                    { "Jim","Wang" },
-                    { "DisableEmail",true }
+                    { "AppID","PayFabric.Net" },
+                    { "DisableEmailReceipt",true }
                 }
             };
             //Test PreAuthorize method.
@@ -220,7 +220,7 @@ namespace PayFabric.Net.Test
             string transactionKey = tranResult.TransactionKey;
 
             //Test Capture method.
-            result = _paymentService.Capture(transactionKey,_amount, _extendedInformation).Result;
+            result = _paymentService.Capture(transactionKey,115M, _extendedInformation).Result;
             Assert.AreEqual(true,result.Success );
             Assert.IsNotNull(result.TransactionResponse);
 
