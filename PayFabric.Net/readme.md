@@ -1,4 +1,8 @@
-﻿### PayFabric.Net is a PayFabric payment Api wrapper. 
+﻿### PayFabric.Net is a PayFabric payment Api client library on .net standard 2.0. 
+This is not an official .net library from PayFabric.  PayFabric does not have a .net library. It only has a Api document repository on github. 
+https://github.com/PayFabric/APIs/blob/master/PayFabric/README.md 
+
+Author: Jim Wang mailto:jim.wang1014@gmail.com
 
 #### Instruction 
 Add following PayFabricOptions in appSettings
@@ -6,19 +10,18 @@ Add following PayFabricOptions in appSettings
 {
     "PayFabricOptions": {
         "BaseUrl": "https://sandbox.payfabric.com/payment/api",
-        "DeviceId": "2:a5e5b070-70c4-2f2a-dc2e-7992411d404c",
-        "Password": "Xu834uhtr!@",
-        "SetupId": "Evo b2b",        //Ignore or set this value as null/empty to use the default gateway.
-        "Tender": "CreditCard"
+        "DeviceId": "x:00000000-0000-0000-0000-000000000000", //The device ID in PayFabric Settings -> Device Management.
+        "Password": "xxxxx", //The password of the device
+        "SetupId": "Evo"   
     }
 }
 ```
-*Note:* The SetupId is the gateway profile name in PayFabric settings. 
+*Note:* The SetupId is the gateway profile name in PayFabric settings, ignore or set the value as null/empty to use the default gateway.
 #### PaymentService Sampe codes 
 
 1. Add following code in ConfigurationServices when you use dependency injection 
 ```csharp
-    //configure PayFabricOptions, specify to use HttpClientHandler
+    //configure PayFabricOptions
     services.Configure<PayFabricOptions>(options =>Configuration.GetSection(nameof(PayFabricOptions)).Bind(options));
 
     // Add Logger interface for PayFabricService
@@ -26,50 +29,115 @@ Add following PayFabricOptions in appSettings
 
     // Add IPaymentService
     services.AddScoped<IPaymentService, PayFabricPaymentService>(); 
+    
+    // Add ITransactionService
+    services.AddScoped<ITransactionService, PayFabricPaymentService>();
 
     // Add IWalletService 
     services.AddScoped<IWalletService, PayFabricWalletService>();
 
 ```
-2. Example: Pre-Authorize the credit card transaction when order is booked 
+
+ 2. Example: Charge the credit card. 
+ ```csharp
+    public async Task Charge()
+    {
+        var amount = 100M;
+        var currency = "USD";
+        Card card = new Card
+        {
+            CardHolder = new CardHolder
+            {
+                FirstName = "PantsON",
+                LastName = "Fire",
+            },
+
+            Account = "4111111111111111",
+            Cvc = "532",
+            ExpirationDate = "0925",
+            Billto = new Address
+            {
+                City = "wheaton",
+                Country = "USA",
+                Line1 = "1953 Wexford Cir",
+                State = "IL",
+                Zip = "60189",
+                Email = "Jon@johny.com"
+            },
+            Tender= TenderTypeEnum.CreditCard
+
+        };
+
+        ExtendedInformation extInfo = new ExtendedInformation
+        {
+            Customer = "TEST_0199999",
+            InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff"),
+            DocumentHead = new LevelTwoData
+            {
+                DiscountAmount = 10M,
+                DutyAmount = 110M,
+                TaxAmount = 10M,
+                FreightAmount = 5M,
+                ShipFromZip = "60139",
+                ShipToZip = "60189",
+                PONumber = "PO_1235",
+                OrderDate = DateTime.Now
+            },
+            DocumentLines = new List<LevelThreeData> {
+                new LevelThreeData
+                {
+                    ItemDesc="SHOE-LA01-BLACK",
+                    ItemQuantity=1M,
+                    ItemUOM ="PAIR",
+                    ItemAmount=55M,
+                    ItemDiscount=5M
+                },
+                new LevelThreeData
+                {
+                    ItemDesc="SHOE-LA02-WHITE",
+                    ItemQuantity=1M,
+                    ItemUOM ="PAIR",
+                    ItemAmount=55M,
+                    ItemDiscount=5M
+                }
+            }
+        };
+        ServiceNetResponse response =  await paymentService.Sale(amount, currency, card, extInfo);
+        if(response.Success)
+        {
+            TransactionResponse transactionResponse=response.TransactionResponse;
+            string transactionKey= transactionResponse.TransactionKey;
+            //TODO: do while the transaction is success.  
+        }
+    }
+ ```
+
+3. Example: Pre-Authorize the credit card transaction when order is booked .
 ```csharp
     public async Task PreAuthorize(decimal amount, string currency,Card card, ExtendedInformation extInfo)
     {
         ServiceNetResponse response =  await paymentService.PreAuthorize(amount, currency, card, extInfo);
         if(response.Success)
         {
-            TransactionResult transactionResult=response.Transaction;
-            string transactionKey=transactionResult.TransactionKey;
+            TransactionResponse transactionResponse=response.TransactionResponse;
+            string transactionKey=transactionResponse.TransactionKey;
             //TODO: save the transactionKey, which we need to capture the transaction when the order is shipped.
         }
     }
 ```
- 3. Example: Capture the previous Pre-Authorized transaction when order is shipped. 
+ 4. Example: Capture the previous Pre-Authorized transaction when order is shipped. 
  ```csharp
     public async Task Capture(string transactionKey, decimal amount, ExtendedInformation extInfo)
     {
         ServiceNetResponse response =  await paymentService.Capture(transactionKey, amount, extInfo);
         if(response.Success)
         {
-            TransactionResult transactionResult=response.Transaction;
+            TransactionResponse transactionResult=response.TransactionResponse;
             //TODO: do while the transaction is success. 
         }
     }
  ```
 
- 4. Example: Charge the credit card. 
- ```csharp
-    public async Task Charge(decimal amount, string currency, Card card, ExtendedInformation extInfo)
-    {
-        ServiceNetResponse response =  await paymentService.Charge(amount,currency,card, extInfo);
-        if(response.Success)
-        {
-            TransactionResult transactionResult=response.Transaction;
-            string transactionKey= transactionResult.TransactionKey;
-            //TODO: do while the transaction is success.  
-        }
-    }
- ```
 
  5. Example: Void the transaction - We can void the transaction before the transaction is settlled. (The bank usually settle the transaction at end of the day.)  
  ```csharp
@@ -78,14 +146,14 @@ Add following PayFabricOptions in appSettings
         ServiceNetResponse response =  await paymentService.Void(transactionKey,null);
         if(response.Success)
         {
-            TransactionResult transactionResult=response.Transaction;
+            TransactionResponse transactionResponse=response.TransactionResponse;
             //TODO: do while the transaction is success.  
         }
     }
  ```
 
 
-**Note:** Please see the test project for more samples. https://dev.azure.com/itssco/WebERP/_git/common-library-ssco.paymentservice?path=%2FSSCo.PayFabricService.Test 
+**Note:** Please see the test project for more samples. https://github.com/wjmirror/PayFabric.Net/tree/master/PayFabric.Net.Test
 
 **Note:** The ExtendedInformation is passed to payment API as Level2/3 data. The ExtendedInformation.InvoiceNumber is important, some payment gateway use it to detect duplicate transaction. And banks give us discounted price when the invoice number is specified. 
 
@@ -111,7 +179,8 @@ public async Task<string> SaveCreditCard()
                     State = "IL",
                     Zip = "60139",
                     Email = "Jon@johny.com"
-                }
+                },
+                Tender = TenderTypeEnum.CreditCard
             };
     WalletTransactionResult result await = this.walletService.Create(card);
     
@@ -127,7 +196,7 @@ public async Task Charge(string customerNumber, string cardId, string cvv, decim
         Cvv = cvv,
         Customer = customerNumber
     };
-    var chargeResult = await this.paymentService.Charge(amount, currency, card, extInfo);
+    var chargeResult = await this.paymentService.Sale(amount, currency, card, extInfo);
 }
 
 
@@ -145,7 +214,7 @@ public async Task SaveAndChargeCreditCard()
                 {
                     City = "Wheton",
                     Country = "USA",
-                    Line1 = "218 Esat Avenue",
+                    Line1 = "218 East Avenue",
                     State = "IL",
                     Zip = "60139",
                     Email = "Jon@johny.com"
@@ -156,7 +225,7 @@ public async Task SaveAndChargeCreditCard()
      {
          InvoiceNumber = "Inv0001"
      };
-     var chargeResult = await this.paymentService.Charge(105M, "USD", card, extInfo);
+     var chargeResult = await this.paymentService.Sale(105M, "USD", card, extInfo);
      Assert.IsTrue(chargeResult.Success); 
 }
 
@@ -168,14 +237,8 @@ Public Task<ICollection<Card>> GetCustomerCards(string customer)
 }
 
 ``` 
-**Note:** Please see the test project for more samples. https://dev.azure.com/itssco/WebERP/_git/common-library-ssco.paymentservice?path=%2FSSCo.PayFabricService.Test%2FPayFabricWalletServiceTest.cs 
+**Note:** Please see the test project for more samples.  https://github.com/wjmirror/PayFabric.Net/tree/master/PayFabric.Net.Test
 
 
 
-#### Version History:
-1.1.0.21103 - 3/10/2021
-* Change decimal and datetime properties in ExtendedInformation.LevelTwoData as Nullable type. 
-
-1.1.0.21092 - released on 3/2/2021
-* Add payfabric wallet service  
 

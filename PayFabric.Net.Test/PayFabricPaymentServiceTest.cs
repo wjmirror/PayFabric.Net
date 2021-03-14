@@ -84,14 +84,16 @@ namespace PayFabric.Net.Test
                     State = "IL",
                     Zip = "60189",
                     Email = "Jon@johny.com"
-                }
+                },
+                Tender= TenderTypeEnum.CreditCard
+
             };
 
             _extendedInformation = new ExtendedInformation
             {
                 Customer = "TESTAUTO",
                 InvoiceNumber = "Inv0001",
-                LevelTwoData = new LevelTwoData
+                DocumentHead = new LevelTwoData
                 {
                     DutyAmount = 100M,
                     FreightAmount = 110M,
@@ -119,7 +121,7 @@ namespace PayFabric.Net.Test
             {
                 Customer = "TEST_0199999",
                 InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff"),
-                LevelTwoData = new LevelTwoData
+                DocumentHead = new LevelTwoData
                 {
                     DiscountAmount = 10M,
                     DutyAmount = 110M,
@@ -132,7 +134,7 @@ namespace PayFabric.Net.Test
                 }
             };
             //Test PreAuthorize method.
-            ServiceNetResponse result = await _paymentService.Charge(115M, _currency, _goodcard, extInfo);
+            ServiceNetResponse result = await _paymentService.Sale(115M, _currency, _goodcard, extInfo);
 
             Assert.AreEqual(result.Success, true);
             Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
@@ -165,9 +167,47 @@ namespace PayFabric.Net.Test
         public  void TestSuccessCreditCardTransaction_PreAuthorizeCaptureVoid_TransactionIsSuccess()
         {
 
-            _extendedInformation.InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff");
+            ExtendedInformation extInfo = new ExtendedInformation
+            {
+                Customer = "TEST_0199999",
+                InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff"),
+                DocumentHead = new LevelTwoData
+                {
+                    DiscountAmount = 10M,
+                    DutyAmount = 110M,
+                    TaxAmount = 10M,
+                    FreightAmount = 5M,
+                    ShipFromZip = "60139",
+                    ShipToZip = "60189",
+                    PONumber = "PO_1235",
+                    OrderDate = DateTime.Now
+                },
+                DocumentLines = new List<LevelThreeData> {
+                    new LevelThreeData
+                    {
+                        ItemDesc="SHOE-LA01-BLACK",
+                        ItemQuantity=1M,
+                        ItemUOM ="PAIR",
+                        ItemAmount=55M,
+                        ItemDiscount=5M
+                    },
+                    new LevelThreeData
+                    {
+                        ItemDesc="SHOE-LA02-WHITE",
+                        ItemQuantity=1M,
+                        ItemUOM ="PAIR",
+                        ItemAmount=55M,
+                        ItemDiscount=5M
+                    }
+                },
+                ExtentionInformation = new Dictionary<string, object>()
+                {
+                    { "Jim","Wang" },
+                    { "DisableEmail",true }
+                }
+            };
             //Test PreAuthorize method.
-            ServiceNetResponse result =  _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
+            ServiceNetResponse result =  _paymentService.PreAuthorize(115.0M, _currency, _goodcard, extInfo).Result;
             
             Assert.AreEqual(result.Success, true);
             Assert.IsNotNull(result.TransactionResponse);
@@ -181,19 +221,19 @@ namespace PayFabric.Net.Test
 
             //Test Capture method.
             result = _paymentService.Capture(transactionKey,_amount, _extendedInformation).Result;
-            Assert.AreEqual(result.Success, true);
+            Assert.AreEqual(true,result.Success );
             Assert.IsNotNull(result.TransactionResponse);
 
             tranResult = result.TransactionResponse;
 
             Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
 
-            //Re-assigning latest transaction key for next Void method to pass.
+            //Re-assign latest transaction key for next Void method to pass.
             transactionKey = tranResult.TransactionKey;
 
             //Test Void method.
             result = _paymentService.Void(transactionKey, _extendedInformation).Result;
-            Assert.AreEqual(result.Success, true);
+            Assert.AreEqual(true,result.Success);
             Assert.IsNotNull(result.TransactionResponse);
 
             tranResult = result.TransactionResponse;
@@ -399,7 +439,6 @@ namespace PayFabric.Net.Test
             {
                 string referencekey = transactionKey;
                 _amount = 22.99M;
-                _extendedInformation.ReferenceTransactionKey = referencekey;
                 result = _paymentService.Credit(_amount, _currency, _goodcard, _extendedInformation).Result;
 
                 Assert.AreEqual(result.Success, true);
@@ -546,7 +585,7 @@ namespace PayFabric.Net.Test
             _goodcard.Account = "000000000000000";
             ServiceNetResponse result = _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result;
             var tranResult = result.TransactionResponse;
-            Assert.AreEqual(result.ResponseCode , "412");
+            Assert.AreEqual(TransactionStatus.Failure, result.TransactionStatus);
         }
 
 #endregion
@@ -720,11 +759,12 @@ namespace PayFabric.Net.Test
         /// Expected result - HttpStatusCode.PreconditionFailed
         /// </summary>
         [TestMethod]
-        public  void ValidatePreAuthorizeMethod_CurrencyIsEmpty_PreAuthozationFail()
+        [ExpectedException(typeof(Exception))]
+        public async Task ValidatePreAuthorizeMethod_CurrencyIsEmpty_PreAuthozationFail()
         {
             _currency = "";
             _extendedInformation.InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff");
-            ServiceNetResponse result =  _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation).Result; //Currency is empty ""
+            ServiceNetResponse result = await _paymentService.PreAuthorize(_amount, _currency, _goodcard, _extendedInformation); //Currency is empty ""
             Assert.AreEqual(result.Success, false);
         }
 

@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -18,6 +19,7 @@ namespace PayFabric.Net.Models
         /// <summary>
         /// Tender type. Valid options are CreditCard or ECheck.
         /// </summary>
+        [JsonConverter(typeof(StringEnumConverter))]
         public TenderTypeEnum? Tender { get; set; }
 
         /// <summary>

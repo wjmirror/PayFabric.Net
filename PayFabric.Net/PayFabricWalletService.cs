@@ -45,6 +45,9 @@ namespace PayFabric.Net
 
         public async Task<WalletTransactionResponse> Create(Card card)
         {
+            if (card.Tender == null)
+                card.Tender = TenderTypeEnum.CreditCard;
+
             WalletTransactionResponse result = new WalletTransactionResponse();
             try
             {

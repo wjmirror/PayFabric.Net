@@ -19,7 +19,7 @@ namespace PayFabric.Net.Models
         /// <summary>
         /// Up to 50 key value pairs can be stored in this object. Note: Adding DisableEmailReceipt under UserDefined to disable PayFabric's payment receipt to be sent out for the processed transaction, the possible values are True and False. If the value is True, this will disable the payment receipt to be sent out for the processed transaction. If the value is False or empty or the field is not submitted, this will enable the payment receipt to be sent out for the processed transaction based on the configuration of Payment Receipt.
         /// </summary>
-        public string UserDefined { get; set; }
+        public ICollection<NameValue> UserDefined { get; set; }
 
 
         /// <summary>

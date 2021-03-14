@@ -52,6 +52,7 @@ namespace PayFabric.Net.Test
             services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp => sp.GetService<ILoggerFactory>().CreateLogger("PayFabric.Net"));
             services.AddSingleton<IPaymentService, PayFabricPaymentService>();
             services.AddSingleton<IWalletService, PayFabricWalletService>();
+            services.AddSingleton<ITransactionService, PayFabricPaymentService>();
         }
 
         public static ILogger<T> GetLogger<T>()

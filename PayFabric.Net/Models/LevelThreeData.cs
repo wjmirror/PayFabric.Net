@@ -4,7 +4,7 @@ using System.Text;
 
 namespace PayFabric.Net.Models
 {
-    public partial class PayFabricProduct
+    public partial class LevelThreeData
     {
 
         public string ItemCommodityCode { get; set; }
@@ -12,11 +12,11 @@ namespace PayFabric.Net.Models
         public string ItemUPC { get; set; }
         public string ItemUOM { get; set; }
         public string ItemDesc { get; set; }
-        public string ItemAmount { get; set; }
-        public string ItemCost { get; set; }
-        public string ItemDiscount { get; set; }
-        public string ItemFreightAmount { get; set; }
-        public string ItemHandlingAmount { get; set; }
-        public string ItemQuantity { get; set; }
+        public decimal? ItemAmount { get; set; }
+        public decimal? ItemCost { get; set; }
+        public decimal? ItemDiscount { get; set; }
+        public decimal? ItemFreightAmount { get; set; }
+        public decimal? ItemHandlingAmount { get; set; }
+        public decimal? ItemQuantity { get; set; }
     }
 }

@@ -42,12 +42,12 @@ namespace PayFabric.Net.Test
             _cardA = new Card
             {
                 Customer = "TESTAUTO",
-                CardHolder=new CardHolder
+                CardHolder = new CardHolder
                 {
- FirstName = "PantsON",
-                LastName = "Fire",
+                    FirstName = "PantsON",
+                    LastName = "Fire",
                 },
-               
+
                 Account = "4583194798565295",
                 Cvc = "532",
                 ExpirationDate = "0925",
@@ -65,12 +65,12 @@ namespace PayFabric.Net.Test
             _cardB = new Card
             {
                 Customer = "TESTAUTO",
-                CardHolder=new CardHolder
+                CardHolder = new CardHolder
                 {
-FirstName = "PantsON",
-                LastName = "Fire",
+                    FirstName = "PantsON",
+                    LastName = "Fire",
                 },
-                
+
                 Account = "4111111111111111",
                 Cvc = "532",
                 ExpirationDate = "0925",
@@ -88,7 +88,7 @@ FirstName = "PantsON",
             _extendedInformation = new ExtendedInformation
             {
                 InvoiceNumber = "Inv0001",
-                LevelTwoData = new LevelTwoData
+                DocumentHead = new LevelTwoData
                 {
                     DutyAmount = 100M,
                     FreightAmount = 110M,
@@ -128,7 +128,7 @@ FirstName = "PantsON",
         }
 
         [TestMethod]
-        public async Task TestSuccess_Wallet_APPERP_9628_IsSuccess()
+        public async Task TestSuccess_Wallet_Service_IsSuccess()
         {
             //Create Card A
             var createResultA = await this._walletService.Create(_cardA);
@@ -149,9 +149,9 @@ FirstName = "PantsON",
             var patchB = new Card()
             {
                 ID = Guid.Parse(idB),
-                CardHolder=new CardHolder
+                CardHolder = new CardHolder
                 {
-FirstName = "Jim",
+                    FirstName = "Jim",
                 },
                 ExpirationDate = "0625"
             };
@@ -167,11 +167,11 @@ FirstName = "Jim",
             //Charge on cardB 
             var cb = new Card()
             {
-                ID =Guid.Parse( idB),
+                ID = Guid.Parse(idB),
                 Cvc = _cardB.Cvc,
                 Customer = _cardB.Customer
             };
-            var chargeResult = await this._paymentService.Charge(105M, "USD", cb, _extendedInformation);
+            var chargeResult = await this._paymentService.Sale(105M, "USD", cb, _extendedInformation);
             Assert.AreEqual(chargeResult.Success, true);
 
             //Lock B 
@@ -181,11 +181,11 @@ FirstName = "Jim",
             //Charge on card B again 
             cb = new Card()
             {
-                ID = Guid.Parse( idB),
+                ID = Guid.Parse(idB),
                 Cvc = _cardB.Cvc,
                 Customer = _cardB.Customer
             };
-            chargeResult = await this._paymentService.Charge(115M, "USD", cb, _extendedInformation);
+            chargeResult = await this._paymentService.Sale(115M, "USD", cb, _extendedInformation);
             Assert.AreEqual(chargeResult.Success, true);
 
             //Unlock B 
@@ -196,7 +196,7 @@ FirstName = "Jim",
             //Get all cards of customer TESTAUTO
             var cards = await this._walletService.GetByCustomer("TESTAUTO");
             Assert.IsNotNull(cards);
-            Assert.IsNotNull(cards.Where(e => e.ID == Guid.Parse( idB)).FirstOrDefault());
+            Assert.IsNotNull(cards.Where(e => e.ID == Guid.Parse(idB)).FirstOrDefault());
 
 
             //Remove Card A
@@ -214,12 +214,12 @@ FirstName = "Jim",
             var testCard = new Card
             {
                 Customer = "TESTAUTO-3",
-                CardHolder=new CardHolder
+                CardHolder = new CardHolder
                 {
-FirstName = "PantsON",
-                LastName = "Fire",
+                    FirstName = "PantsON",
+                    LastName = "Fire",
                 },
-                
+
                 Account = "4111111111111111",
                 Cvc = "532",
                 ExpirationDate = "0925",
@@ -233,10 +233,11 @@ FirstName = "PantsON",
                     Email = "Jon@johny.com"
                 },
                 IsDefaultCard = true,
-                IsSaveCard = true
+                IsSaveCard = true,
+                Tender = TenderTypeEnum.CreditCard
             };
 
-            var chargeResult = await this._paymentService.Charge(105M, "USD", testCard, _extendedInformation);
+            var chargeResult = await this._paymentService.Sale(105M, "USD", testCard, _extendedInformation);
             Assert.IsTrue(chargeResult.Success);
 
             var cards = await this._walletService.GetByCustomer(testCard.Customer);
@@ -263,7 +264,7 @@ FirstName = "PantsON",
 
             if (cards.Count > 0)
             {
-                foreach ( var card in cards)
+                foreach (var card in cards)
                 {
                     if (card.IsLocked.GetValueOrDefault())
                     {
@@ -274,9 +275,5 @@ FirstName = "PantsON",
             }
 
         }
-
-
-
-
     }
 }

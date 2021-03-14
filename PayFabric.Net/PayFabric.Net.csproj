@@ -3,11 +3,20 @@
   <!-- Commone Configuration-->
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <AssemblyVersion>1.1.0.21103</AssemblyVersion>
-    <FileVersion>1.1.0.21103</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
   <PropertyGroup>
     <DocumentationFile>.\bin\$(Configuration)\$(TargetFramework)\PayFabric.Net.xml</DocumentationFile>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>jim.wang1014@gmail.com</Authors>
+    <Description>PayFabric Api .Net standard 2.0 client library.</Description>
+    <Copyright>2021 @Jim Wang</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/wjmirror/PayFabric.Net/blob/master/PayFabric.Net/readme.md</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/wjmirror/PayFabric.Net</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <Version>1.0.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
