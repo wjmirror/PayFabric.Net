@@ -2,9 +2,13 @@
 This is not an official .net library from PayFabric.  PayFabric does not have a .net library. It only has a Api document repository on github. 
 https://github.com/PayFabric/APIs/blob/master/PayFabric/README.md 
 
-Author: Jim Wang mailto:jim.wang1014@gmail.com
+Author: Jim Wang  
+jim.wang1014@gmail.com
 
 #### Instruction 
+Install nuget package from nuget.org  
+https://www.nuget.org/packages/PayFabric.Net/ 
+
 Add following PayFabricOptions in appSettings
 ```json
 {
