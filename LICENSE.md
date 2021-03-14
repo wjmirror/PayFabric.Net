@@ -1,6 +1,6 @@
 The MIT License (MIT)
 
-Copyright (c) 2021 Jim Wang 
+Copyright (c) 2021 Jim Wang mailto:Jim.wang1014@gmail.com
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in

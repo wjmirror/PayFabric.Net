@@ -166,12 +166,15 @@ public async Task<string> SaveCreditCard()
 {
     Card card = new Card
             {
-                Customer = "0199999", //This is required
-                FirstName = "PantsON",
-                LastName = "Fire",
-                Number = "4583194798565295",
+                Customer = "TEST-001", //The customer is required
+                CardHolder = new CardHolder
+                {
+                    FirstName = "PantsON",
+                    LastName = "Fire",
+                },
+                Account = "4583194798565295",
                 ExpirationDate = "0925",
-                Address = new Address
+                Billto = new Address
                 {
                     City = "Wheton",
                     Country = "USA",
@@ -188,12 +191,12 @@ public async Task<string> SaveCreditCard()
 }
 
 //Charge to credit card with wallet entry Id. 
-public async Task Charge(string customerNumber, string cardId, string cvv, decimal amount, string currency, ExtendedInformation extInfo )
+public async Task Charge(string customerNumber, string cardId, string cvc, decimal amount, string currency, ExtendedInformation extInfo )
 {
     Card card = new Card()
     {
         Id = cardId,
-        Cvv = cvv,
+        Cvc = cvc,
         Customer = customerNumber
     };
     var chargeResult = await this.paymentService.Sale(amount, currency, card, extInfo);
@@ -206,20 +209,24 @@ public async Task SaveAndChargeCreditCard()
     Card card = new Card
             {
                 Customer = "0199999",  //Customer is Required when IsSaveCard is true. 
-                FirstName = "PantsON",
-                LastName = "Fire",
-                Number = "4583194798565295",
+                CardHolder = new CardHolder
+                {
+                    FirstName = "PantsON",
+                    LastName = "Fire",
+                },
+                Account = "4583194798565295",
                 ExpirationDate = "0925",
-                Address = new Address
+                Billto = new Address
                 {
                     City = "Wheton",
                     Country = "USA",
-                    Line1 = "218 East Avenue",
+                    Line1 = "218 Esat Avenue",
                     State = "IL",
                     Zip = "60139",
                     Email = "Jon@johny.com"
                 },
-                IsSaveCard = true //This tell payfabric to save the credit card. 
+                Tender = TenderTypeEnum.CreditCard
+                IsSaveCard = true //This tells PayFabric to save the credit card. 
             };
      extInfo = new ExtendedInformation
      {
@@ -230,7 +237,7 @@ public async Task SaveAndChargeCreditCard()
 }
 
 
-//Retrieve all the card from Payfabric wallet service 
+//Retrieve all cards from Payfabric wallet service 
 Public Task<ICollection<Card>> GetCustomerCards(string customer)
 {
     var cards= this.walletService.GetByCustomer(customer);
