@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30804.86
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PayFabric.Net", "PayFabric.Net\PayFabric.Net.csproj", "{FEBA2355-AD03-45C0-B75D-D48E6A446994}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{11590FF0-AF61-442D-89E2-26B09862BEAC}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PayFabric.Net.Test", "PayFabric.Net.Test\PayFabric.Net.Test.csproj", "{290D73C5-76CA-4103-9120-9547897786C1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FEBA2355-AD03-45C0-B75D-D48E6A446994}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FEBA2355-AD03-45C0-B75D-D48E6A446994}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FEBA2355-AD03-45C0-B75D-D48E6A446994}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FEBA2355-AD03-45C0-B75D-D48E6A446994}.Release|Any CPU.Build.0 = Release|Any CPU
+		{290D73C5-76CA-4103-9120-9547897786C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{290D73C5-76CA-4103-9120-9547897786C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{290D73C5-76CA-4103-9120-9547897786C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{290D73C5-76CA-4103-9120-9547897786C1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{290D73C5-76CA-4103-9120-9547897786C1} = {11590FF0-AF61-442D-89E2-26B09862BEAC}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {47323392-9FCB-4636-BCF5-410ADC89B177}
+	EndGlobalSection
+EndGlobal
