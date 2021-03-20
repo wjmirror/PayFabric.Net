@@ -47,6 +47,7 @@ namespace PayFabric.Net
             this.httpClient.DefaultRequestHeaders.TryAddWithoutValidation("authorization", string.Format("{0}|{1}", this.options.DeviceId, this.options.Password));
 
         }
+
         /// <summary>
         /// Capture transaction will attempt to execute and finalize (capture) a pre-authorized transaction with specific amount, if Amount is null, it will capture with authorized amount. if Amount is provoided, it could be able to capture an authorization transaction multiple times, which depends on what gateway been used. (Note: Following gateways support multiple captures, Authorize.Net, USAePay & Payeezy(aka First Data GGE4).)
         /// </summary>
@@ -54,7 +55,7 @@ namespace PayFabric.Net
         /// <param name="amount">The capture amount.  If Amount is null, it will capture with authorized amount. </param>
         /// <param name="extInfo">The extension infomation, usaully be null </param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> Capture(string transactionKey, decimal? amount, ExtendedInformation extInfo)
+        public virtual async Task<ServiceNetResponse> Capture(string transactionKey, decimal? amount, ExtendedInformation extInfo)
         {
 
             return await this.ProcessReferenceTransaction((transaction) =>
@@ -62,6 +63,36 @@ namespace PayFabric.Net
                 transaction.Type = TransactionType.Capture.ToString("g");
                 transaction.ReferenceKey = transactionKey;
                 transaction.Amount = amount;
+                transaction.RequestTransactionTag = extInfo?.RequestTransactionTag;
+            });
+
+        }
+
+
+        /// <summary>
+        /// Force transaction is to enter an already approved authorization/transaction. A Force is typically used for capturing a phone or voice authorization. When entering a Force you will be required to enter the authorization code.
+        /// </summary>
+        /// <param name="authorizationCode">the previous authorization code</param>
+        /// <param name="amount">amount</param>
+        /// <param name="currency">currency of the amount </param>
+        /// <param name="card">Credit card</param>
+        /// <param name="extInfo">the extension information</param>
+        /// <returns>The ServiceNetResponse object, include the http status, raw response and transaction response</returns>
+        public virtual async Task<ServiceNetResponse> Force(string authorizationCode, decimal amount, string currency, Card card, ExtendedInformation extInfo)
+        {
+
+            return await this.CreateProcessTransaction((transaction) =>
+            {
+                transaction.Type = TransactionType.Force.ToString("g");
+                transaction.ReqAuthCode = authorizationCode;
+                transaction.Card = card;
+                transaction.Amount = amount;
+                transaction.Currency = currency;
+                transaction.Customer = extInfo.Customer;
+                if(!string.IsNullOrWhiteSpace(card?.Customer))
+                    transaction.Customer = card.Customer;
+
+                SetupTransactionDocument(transaction, extInfo);
             });
 
         }
@@ -76,7 +107,7 @@ namespace PayFabric.Net
         /// <param name="card">Credit Card / Echeck information.</param>
         /// <param name="extInfo">Extension information</param>
         /// <returns>The ServiceNetResponse object, include the http status, raw response and transaction response</returns>
-        public async Task<ServiceNetResponse> Sale(decimal amount, string currency, Card card, ExtendedInformation extInfo)
+        public virtual async Task<ServiceNetResponse> Sale(decimal amount, string currency, Card card, ExtendedInformation extInfo)
         {
             return await this.CreateProcessTransaction((transaction) =>
             {
@@ -84,15 +115,16 @@ namespace PayFabric.Net
                 transaction.Amount = amount;
                 transaction.Currency = currency;
                 transaction.Card = card;
-                if (!string.IsNullOrWhiteSpace(extInfo.Customer))
+                if (!string.IsNullOrWhiteSpace(extInfo?.Customer))
                     transaction.Customer = extInfo.Customer;
 
-                if (!string.IsNullOrWhiteSpace(card.Customer))
+                if (!string.IsNullOrWhiteSpace(card?.Customer))
                     transaction.Customer = card.Customer;
 
                 SetupTransactionDocument(transaction, extInfo);
             });
         }
+
         /// <summary>
         /// Refund transaction will attempt to credit a transaction that has already been submitted to a payment gateway and has been settled from the bank. PayFabric attempts to submit a CREDIT transaction for the same exact amount as the original SALE transaction.
         /// </summary>
@@ -100,7 +132,7 @@ namespace PayFabric.Net
         /// <param name="amount">Amount to refund, for Payfabric, this amount must be null, since it does not support partial refund. </param>
         /// <param name="extInfo">The extension informaiont, usually be null.</param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> Refund(string transactionKey, decimal? amount, ExtendedInformation extInfo)
+        public virtual async Task<ServiceNetResponse> Refund(string transactionKey, decimal? amount, ExtendedInformation extInfo)
         {
             if (amount.HasValue)
             {
@@ -111,6 +143,7 @@ namespace PayFabric.Net
             {
                 transaction.Type = TransactionType.Refund.ToString("g");
                 transaction.ReferenceKey = transactionKey;
+                transaction.RequestTransactionTag = extInfo?.RequestTransactionTag;
             });
 
         }
@@ -122,7 +155,7 @@ namespace PayFabric.Net
         /// <param name="card">The credit card information.</param>
         /// <param name="extInfo">The extension information.</param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> PreAuthorize(decimal amount, string currency, Card card, ExtendedInformation extInfo)
+        public virtual async Task<ServiceNetResponse> PreAuthorize(decimal amount, string currency, Card card, ExtendedInformation extInfo)
         {
             return await this.CreateProcessTransaction((transaction) =>
             {
@@ -130,10 +163,10 @@ namespace PayFabric.Net
                 transaction.Amount = amount;
                 transaction.Currency = currency;
                 transaction.Card = card;
-                if (!string.IsNullOrWhiteSpace(extInfo.Customer))
+                if (!string.IsNullOrWhiteSpace(extInfo?.Customer))
                     transaction.Customer = extInfo.Customer;
 
-                if (!string.IsNullOrWhiteSpace(card.Customer))
+                if (!string.IsNullOrWhiteSpace(card?.Customer))
                     transaction.Customer = card.Customer;
 
                 SetupTransactionDocument(transaction, extInfo);
@@ -143,14 +176,14 @@ namespace PayFabric.Net
 
 
         /// <summary>
-        /// A Refund is issued to transfer money from the company’s account to the customer’s account or credit card.
+        /// A Credit is issued to transfer money from the company’s account to the customer’s account or credit card.
         /// </summary>
         /// <param name="amount">The amount to refund</param>
         /// <param name="currency">the currency of the amount</param>
         /// <param name="card">the credit card information</param>
         /// <param name="extInfo">the extension information</param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> Credit(decimal amount, string currency, Card card, ExtendedInformation extInfo)
+        public virtual async Task<ServiceNetResponse> Credit(decimal amount, string currency, Card card, ExtendedInformation extInfo)
         {
             return await this.CreateProcessTransaction((transaction) =>
             {
@@ -158,10 +191,10 @@ namespace PayFabric.Net
                 transaction.Amount = amount;
                 transaction.Currency = currency;
                 transaction.Card = card;
-                if (!string.IsNullOrWhiteSpace(extInfo.Customer))
+                if (!string.IsNullOrWhiteSpace(extInfo?.Customer))
                     transaction.Customer = extInfo.Customer;
 
-                if (!string.IsNullOrWhiteSpace(card.Customer))
+                if (!string.IsNullOrWhiteSpace(card?.Customer))
                     transaction.Customer = card.Customer;
 
                 SetupTransactionDocument(transaction, extInfo);
@@ -173,12 +206,13 @@ namespace PayFabric.Net
         /// <param name="transactionKey"></param>
         /// <param name="extInfo">The extension information, usualy be null.</param>
         /// <returns></returns>
-        public async Task<ServiceNetResponse> Void(string transactionKey, ExtendedInformation extInfo)
+        public virtual async Task<ServiceNetResponse> Void(string transactionKey, ExtendedInformation extInfo)
         {
             return await this.ProcessReferenceTransaction((transaction) =>
             {
                 transaction.Type = TransactionType.Void.ToString("g");
                 transaction.ReferenceKey = transactionKey;
+                transaction.RequestTransactionTag = extInfo?.RequestTransactionTag;
             });
         }
 
@@ -366,15 +400,19 @@ namespace PayFabric.Net
 
             if (setupTransaction != null)
                 setupTransaction(transaction);
+            
+                if (string.IsNullOrWhiteSpace(transaction.Type))
+                    throw new Exception("The Transaction Type must be set. ");
 
-            if (string.IsNullOrWhiteSpace(transaction.Type))
-                throw new Exception("The Transaction Type must be set. ");
+            if (string.Compare(transaction.Type, "Force", true) != 0)
+            {
+                if (transaction.Amount == null)
+                    throw new Exception("The Transaction Amount must be set.");
 
-            if (transaction.Amount == null)
-                throw new Exception("The Transaction Amount must be set.");
+                if (string.IsNullOrWhiteSpace(transaction.Currency))
+                    throw new Exception("The currency must be set.");
 
-            if (string.IsNullOrWhiteSpace(transaction.Currency))
-                throw new Exception("The currency must be set.");
+            }
 
             try
             {

@@ -243,6 +243,116 @@ namespace PayFabric.Net.Test
         }
 
         /// <summary>
+        /// Test all 3 Steps as following
+        /// 1. PreAuthorize
+        /// 2. Capture
+        /// 3. Void
+        /// </summary>
+
+        [TestMethod]
+        public void TestSuccessCreditCardTransaction_PreAuthorize_Force_Void_TransactionIsSuccess()
+        {
+
+            var card = new Card
+            {
+                CardHolder = new CardHolder
+                {
+                    FirstName = "PantsON",
+                    LastName = "Fire",
+                },
+
+                Account = "4111111111111111",
+                Cvc = "532",
+                ExpirationDate = "0925",
+                Billto = new Address
+                {
+                    City = "wheaton",
+                    Country = "USA",
+                    Line1 = "1953 Wexford Cir",
+                    State = "IL",
+                    Zip = "60189",
+                    Email = "Jon@johny.com"
+                },
+                Tender = TenderTypeEnum.CreditCard
+            };
+
+            ExtendedInformation extInfo = new ExtendedInformation
+            {
+                Customer = "TEST_0199999",
+                InvoiceNumber = "TEST" + DateTime.Now.ToString("yyyyMMdd_HHmmss.fffff"),
+                DocumentHead = new LevelTwoData
+                {
+                    DiscountAmount = 10M,
+                    DutyAmount = 110M,
+                    TaxAmount = 10M,
+                    FreightAmount = 5M,
+                    ShipFromZip = "60139",
+                    ShipToZip = "60189",
+                    PONumber = "PO_1235",
+                    OrderDate = DateTime.Now
+                },
+                DocumentLines = new List<LevelThreeData> {
+                    new LevelThreeData
+                    {
+                        ItemDesc="SHOE-LA01-BLACK",
+                        ItemQuantity=1M,
+                        ItemUOM ="PAIR",
+                        ItemAmount=55M,
+                        ItemDiscount=5M
+                    },
+                    new LevelThreeData
+                    {
+                        ItemDesc="SHOE-LA02-WHITE",
+                        ItemQuantity=1M,
+                        ItemUOM ="PAIR",
+                        ItemAmount=55M,
+                        ItemDiscount=5M
+                    }
+                },
+                ExtentionInformation = new Dictionary<string, object>()
+                {
+                    { "AppID","PayFabric.Net" },
+                    { "DisableEmailReceipt",true }
+                }
+            };
+
+            //Test PreAuthorize method.
+            ServiceNetResponse result = _paymentService.PreAuthorize(115.0M, _currency, card, extInfo).Result;
+
+            Assert.AreEqual(result.Success, true);
+            Assert.IsNotNull(result.TransactionResponse);
+
+            var tranResult = result.TransactionResponse;
+
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
+            Assert.IsNotNull(tranResult.TransactionKey);
+
+            string authorizationCode = tranResult.AuthorizationCode;
+
+
+            //Test Force method, set card.cvv=null; 
+            card.Cvc = null;
+            result = _paymentService.Force(authorizationCode, 115M, _currency, card, _extendedInformation).Result;
+            Assert.AreEqual(true, result.Success);
+            Assert.IsNotNull(result.TransactionResponse);
+
+            tranResult = result.TransactionResponse;
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
+
+            //Re-assign latest transaction key for next Void method to pass.
+            var transactionKey = tranResult.TransactionKey;
+
+            //Test Void method.
+            result = _paymentService.Void(transactionKey, _extendedInformation).Result;
+            Assert.AreEqual(true, result.Success);
+            Assert.IsNotNull(result.TransactionResponse);
+
+            tranResult = result.TransactionResponse;
+            Assert.AreEqual(TransactionStatus.Approved, result.TransactionStatus);
+
+        }
+
+        /// <summary>
         /// Test all 2 Steps as following
         /// 1. PreAuthorize
         /// 2. Void

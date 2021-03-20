@@ -1,4 +1,5 @@
-﻿using PayFabric.Net.Models;
+﻿using Newtonsoft.Json;
+using PayFabric.Net.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -67,17 +68,34 @@ namespace PayFabric.Net.Models
         /// </summary>
         public DateTime? ModifiedOn { get; set; }
 
+        /// <summary>
+        /// Ship to Address
+        /// </summary>
+        public Address Shipto { get; set; }
+
+        /// <summary>
+        /// Authorization Code, Required for Force transactions.
+        /// </summary>
+        public string ReqAuthCode { get; set; }
+
+        /// <summary>
+        /// The original transaction key if this transaction is a reference transaction
+        /// </summary>
+        [MaxLength(64)]
+        public string ReferenceKey { get; set; }
 
         /// <summary>
         /// Required by FirstData for Void,Ship and reference Credit transactions.
         /// </summary>
         [MaxLength(64)]
-        public string ReqTrxTag { get; set; }
+        [JsonProperty("ReqTrxTag")]
+        public string RequestTransactionTag { get; set; }
 
         /// <summary>
         /// Transaction response from Payment Gateway.
         /// </summary>
-        public TransactionResponse TrxResponse { get; set; }
+        [JsonProperty("TrxResponse")]
+        public TransactionResponse TransactionResponse { get; set; }
 
         /// <summary>
         /// Level 2/3 transaction fields, as well as User Defined fields.
@@ -87,7 +105,8 @@ namespace PayFabric.Net.Models
         /// <summary>
         /// Array of a <see cref="SimpleTransaction"/> which represents the original transactions. Value is Set if this transaction is a reference transaction.
         /// </summary>
-        public ICollection<SimpleTransaction> ReferenceTrxs { get; set; }
+        [JsonProperty("ReferenceTrxs")]
+        public ICollection<SimpleTransaction> ReferenceTransactions { get; set; }
 
         /// <summary>
         /// User Defined field 1
@@ -123,12 +142,6 @@ namespace PayFabric.Net.Models
         /// </summary>
         public DateTime? PayDate { get; set; }
 
-        /// <summary>
-        /// The original transaction key if this transaction is a reference transaction
-        /// </summary>
-        [MaxLength(64)]
-        public string ReferenceKey { get; set; }
-
 
         /// <summary>
         /// The authorization type of the transaction, valid values are Reauthorization, Resubmission, Incremental or NotSet
@@ -140,14 +153,16 @@ namespace PayFabric.Net.Models
         /// The type authorization of transaction to be processed, valid values are Unscheduled, ScheduledInstallment, ScheduledRecurring or NotSet
         /// </summary>
         [MaxLength(25)]
-        public string TrxSchedule { get; set; }
+        [JsonProperty("TrxSchedule")]
+        public string TransactionSchedule { get; set; }
 
 
         /// <summary>
         /// The entity that initiated the transaction, valid values are Merchant, Customer or NotSet
         /// </summary>
         [MaxLength(25)]
-        public string TrxInitiation { get; set; }
+        [JsonProperty("TrxInitiation")]
+        public string TransactionInitiation { get; set; }
 
         /// <summary>
         /// The identifier that specifies whether the card used on the transaction is a stored credential or newly entered, valid values are Entered or Stored
