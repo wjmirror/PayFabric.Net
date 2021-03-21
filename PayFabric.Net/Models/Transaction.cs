@@ -1,4 +1,5 @@
-﻿using PayFabric.Net.Models;
+﻿using Newtonsoft.Json;
+using PayFabric.Net.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -67,6 +68,22 @@ namespace PayFabric.Net.Models
         /// </summary>
         public DateTime? ModifiedOn { get; set; }
 
+        /// <summary>
+        /// Ship to Address
+        /// </summary>
+        public Address Shipto { get; set; }
+
+        /// <summary>
+        /// Authorization Code, Required for Force transactions.
+        /// </summary>
+        [MaxLength(64)]
+        public string ReqAuthCode { get; set; }
+
+        /// <summary>
+        /// The original transaction key if this transaction is a reference transaction
+        /// </summary>
+        [MaxLength(64)]
+        public string ReferenceKey { get; set; }
 
         /// <summary>
         /// Required by FirstData for Void,Ship and reference Credit transactions.
@@ -122,12 +139,6 @@ namespace PayFabric.Net.Models
         /// A future date to process this transaction. In another word, this transaction won't be processed right away by setting this field. It's format should like "3/23/2015". For Verify transaction type, the value in this attribute will be removed automatically.
         /// </summary>
         public DateTime? PayDate { get; set; }
-
-        /// <summary>
-        /// The original transaction key if this transaction is a reference transaction
-        /// </summary>
-        [MaxLength(64)]
-        public string ReferenceKey { get; set; }
 
 
         /// <summary>

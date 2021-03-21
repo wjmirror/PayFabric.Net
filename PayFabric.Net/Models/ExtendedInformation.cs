@@ -13,5 +13,10 @@ namespace PayFabric.Net.Models
         public LevelTwoData DocumentHead { get; set; }
         public ICollection<LevelThreeData> DocumentLines { get; set; }
         public Dictionary<string, object> ExtentionInformation { get; set; }
+
+        /// <summary>
+        /// Set the transaction ReqTrxTag, Required by FirstData for Void,Ship and reference Credit transactions.
+        /// </summary>
+        public string RequestTransactionTag { get; set; }
     }
 }
