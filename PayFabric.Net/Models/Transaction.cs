@@ -76,6 +76,7 @@ namespace PayFabric.Net.Models
         /// <summary>
         /// Authorization Code, Required for Force transactions.
         /// </summary>
+        [MaxLength(64)]
         public string ReqAuthCode { get; set; }
 
         /// <summary>
@@ -88,14 +89,12 @@ namespace PayFabric.Net.Models
         /// Required by FirstData for Void,Ship and reference Credit transactions.
         /// </summary>
         [MaxLength(64)]
-        [JsonProperty("ReqTrxTag")]
-        public string RequestTransactionTag { get; set; }
+        public string ReqTrxTag { get; set; }
 
         /// <summary>
         /// Transaction response from Payment Gateway.
         /// </summary>
-        [JsonProperty("TrxResponse")]
-        public TransactionResponse TransactionResponse { get; set; }
+        public TransactionResponse TrxResponse { get; set; }
 
         /// <summary>
         /// Level 2/3 transaction fields, as well as User Defined fields.
@@ -105,8 +104,7 @@ namespace PayFabric.Net.Models
         /// <summary>
         /// Array of a <see cref="SimpleTransaction"/> which represents the original transactions. Value is Set if this transaction is a reference transaction.
         /// </summary>
-        [JsonProperty("ReferenceTrxs")]
-        public ICollection<SimpleTransaction> ReferenceTransactions { get; set; }
+        public ICollection<SimpleTransaction> ReferenceTrxs { get; set; }
 
         /// <summary>
         /// User Defined field 1
@@ -153,16 +151,14 @@ namespace PayFabric.Net.Models
         /// The type authorization of transaction to be processed, valid values are Unscheduled, ScheduledInstallment, ScheduledRecurring or NotSet
         /// </summary>
         [MaxLength(25)]
-        [JsonProperty("TrxSchedule")]
-        public string TransactionSchedule { get; set; }
+        public string TrxSchedule { get; set; }
 
 
         /// <summary>
         /// The entity that initiated the transaction, valid values are Merchant, Customer or NotSet
         /// </summary>
         [MaxLength(25)]
-        [JsonProperty("TrxInitiation")]
-        public string TransactionInitiation { get; set; }
+        public string TrxInitiation { get; set; }
 
         /// <summary>
         /// The identifier that specifies whether the card used on the transaction is a stored credential or newly entered, valid values are Entered or Stored

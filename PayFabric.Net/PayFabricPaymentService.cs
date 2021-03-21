@@ -63,7 +63,7 @@ namespace PayFabric.Net
                 transaction.Type = TransactionType.Capture.ToString("g");
                 transaction.ReferenceKey = transactionKey;
                 transaction.Amount = amount;
-                transaction.RequestTransactionTag = extInfo?.RequestTransactionTag;
+                transaction.ReqTrxTag = extInfo?.RequestTransactionTag;
             });
 
         }
@@ -143,7 +143,7 @@ namespace PayFabric.Net
             {
                 transaction.Type = TransactionType.Refund.ToString("g");
                 transaction.ReferenceKey = transactionKey;
-                transaction.RequestTransactionTag = extInfo?.RequestTransactionTag;
+                transaction.ReqTrxTag = extInfo?.RequestTransactionTag;
             });
 
         }
@@ -212,7 +212,7 @@ namespace PayFabric.Net
             {
                 transaction.Type = TransactionType.Void.ToString("g");
                 transaction.ReferenceKey = transactionKey;
-                transaction.RequestTransactionTag = extInfo?.RequestTransactionTag;
+                transaction.ReqTrxTag = extInfo?.RequestTransactionTag;
             });
         }
 
